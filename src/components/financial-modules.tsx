@@ -513,7 +513,7 @@ function ResponsiveBar({ data }: { data: any[] }) {
   );
 }
 
-import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend } from "recharts";
+
 function ResponsiveBarChart({ data }: { data: any[] }) {
   return (
     <ResponsiveContainer>
@@ -569,7 +569,7 @@ export function HarvestBudgetModule() {
   );
 }
 
-import { AreaChart, Area } from "recharts";
+
 function AreaChartBudget({ data }: { data: any[] }) {
   return (
     <AreaChart data={data}>
