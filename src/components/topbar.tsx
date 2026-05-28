@@ -1,4 +1,5 @@
 import { Search, Share2, Bell } from "lucide-react";
+import { toast } from "sonner";
 
 export function Topbar() {
   return (
@@ -13,10 +14,19 @@ export function Topbar() {
           ⌘ + F
         </kbd>
       </div>
-      <button className="h-9 w-9 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:bg-muted">
+      <button
+        onClick={() => toast.info("Nenhuma notificacao nova.")}
+        className="h-9 w-9 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:bg-muted"
+      >
         <Bell className="w-4 h-4" />
       </button>
-      <button className="h-9 px-3 rounded-lg border border-border flex items-center gap-2 text-sm text-foreground hover:bg-muted">
+      <button
+        onClick={() => {
+          void navigator.clipboard?.writeText(window.location.href);
+          toast.success("Link da pagina copiado.");
+        }}
+        className="h-9 px-3 rounded-lg border border-border flex items-center gap-2 text-sm text-foreground hover:bg-muted"
+      >
         <Share2 className="w-4 h-4" />
         Compartilhar
       </button>

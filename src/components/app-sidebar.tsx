@@ -1,12 +1,23 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Wallet, Package, HelpCircle, Settings, Moon, Sun, PanelLeft } from "lucide-react";
+import {
+  LayoutDashboard,
+  Wallet,
+  Package,
+  HelpCircle,
+  Settings,
+  Moon,
+  Sun,
+  PanelLeft,
+} from "lucide-react";
 import { useTheme } from "./theme-provider";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
+import { useDemoMode } from "@/hooks/use-demo-mode";
 
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, group: "GERAL" },
-  { title: "Financeiro", url: "/financeiro", icon: Wallet, group: "GERAL" },
+  { title: "Financeiro Agro", url: "/financeiro", icon: Wallet, group: "GERAL" },
 ];
 
 const supportItems = [
@@ -17,6 +28,7 @@ const supportItems = [
 export function AppSidebar() {
   const path = useRouterState({ select: (r) => r.location.pathname });
   const { theme, toggle } = useTheme();
+  const { demoMode, setDemoMode } = useDemoMode();
   const [collapsed, setCollapsed] = useState(false);
 
   const isActive = (url: string) => (url === "/" ? path === "/" : path.startsWith(url));
@@ -24,7 +36,7 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        "flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-200 shrink-0",
+        "sticky top-0 h-screen flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-200 shrink-0",
         collapsed ? "w-[72px]" : "w-[260px]",
       )}
     >
@@ -49,7 +61,9 @@ export function AppSidebar() {
 
       <nav className="flex-1 px-3 py-5 overflow-y-auto">
         {!collapsed && (
-          <div className="px-2 mb-2 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">GERAL</div>
+          <div className="px-2 mb-2 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">
+            GERAL
+          </div>
         )}
         <ul className="space-y-1">
           {items.map((i) => {
@@ -75,8 +89,30 @@ export function AppSidebar() {
       </nav>
 
       <div className="px-3 py-4 border-t border-sidebar-border space-y-1">
+        <div
+          className={cn(
+            "flex items-center rounded-lg px-3 py-2 text-sm text-sidebar-foreground",
+            collapsed ? "justify-center" : "justify-between gap-3",
+          )}
+        >
+          {!collapsed && (
+            <div>
+              <div className="font-medium">DEMO</div>
+              <div className="text-[11px] text-muted-foreground">
+                {demoMode ? "Dados demonstrativos" : "Dados reais"}
+              </div>
+            </div>
+          )}
+          <Switch
+            checked={demoMode}
+            onCheckedChange={setDemoMode}
+            aria-label="Alternar dados demonstrativos"
+          />
+        </div>
         {!collapsed && (
-          <div className="px-2 mb-2 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">SUPORTE</div>
+          <div className="px-2 mb-2 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">
+            SUPORTE
+          </div>
         )}
         {supportItems.map((i) => (
           <a

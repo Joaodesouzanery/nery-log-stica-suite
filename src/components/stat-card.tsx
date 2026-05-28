@@ -17,28 +17,30 @@ export function StatCard({
 }) {
   const data = spark ?? [4, 6, 5, 7, 6, 9, 8, 11];
   const max = Math.max(...data);
+
   return (
-    <div className="bg-card border border-border rounded-2xl p-5 hover:shadow-sm transition-shadow">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-card border border-border rounded-lg p-3 hover:shadow-sm transition-shadow">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center">
-            <Icon className="w-4 h-4" />
+          <div className="w-6 h-6 rounded-md bg-muted flex items-center justify-center">
+            <Icon className="w-3.5 h-3.5" />
           </div>
           {label}
         </div>
-        <button className="text-muted-foreground hover:text-foreground text-lg leading-none">⋯</button>
       </div>
       <div className="flex items-end justify-between gap-3">
         <div>
-          <div className="text-3xl font-semibold tracking-tight text-foreground">{value}</div>
+          <div className="text-2xl font-semibold tracking-tight text-foreground">{value}</div>
           {delta && (
             <div className="text-xs mt-1 text-muted-foreground">
-              <span className={cn("font-medium", positive ? "text-success" : "text-destructive")}>{delta}</span>{" "}
-              vs mês anterior
+              <span className={cn("font-medium", positive ? "text-success" : "text-destructive")}>
+                {delta}
+              </span>{" "}
+              vs mes anterior
             </div>
           )}
         </div>
-        <div className="flex items-end gap-1 h-10">
+        <div className="flex items-end gap-1 h-8">
           {data.map((v, i) => (
             <div
               key={i}

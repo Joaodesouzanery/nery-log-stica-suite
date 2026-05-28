@@ -111,6 +111,8 @@ function RootShell({ children }: { children: React.ReactNode }) {
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Topbar } from "@/components/topbar";
+import { DemoProvider } from "@/components/demo-provider";
+import { Toaster } from "@/components/ui/sonner";
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
@@ -118,15 +120,18 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <div className="flex min-h-screen w-full bg-background text-foreground">
-          <AppSidebar />
-          <div className="flex-1 flex flex-col min-w-0">
-            <Topbar />
-            <main className="flex-1 overflow-x-hidden">
-              <Outlet />
-            </main>
+        <DemoProvider>
+          <div className="flex min-h-screen w-full bg-background text-foreground">
+            <AppSidebar />
+            <div className="flex-1 flex flex-col min-w-0">
+              <Topbar />
+              <main className="flex-1 overflow-x-hidden">
+                <Outlet />
+              </main>
+            </div>
           </div>
-        </div>
+          <Toaster position="top-right" />
+        </DemoProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
