@@ -1,6 +1,18 @@
 import { Card, KPI, Pill, Section } from "@/components/fin-ui";
-import { CashFlowChart, TrendLine, BreakEvenChart, MiniArea, chartColors } from "@/components/charts";
-import { AlertTriangle, ArrowDown, ArrowUp, Calendar, CheckCircle2, Clock, Filter, Plus, Search, TrendingUp } from "lucide-react";
+import { CashFlowChart, BreakEvenChart, MiniArea, chartColors } from "@/components/charts";
+import { ArrowDown, ArrowUp, CheckCircle2, Clock, Plus } from "lucide-react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  AreaChart,
+  Area,
+} from "recharts";
 
 /* 1. Fluxo de Caixa & Custos */
 export function CashflowModule() {
