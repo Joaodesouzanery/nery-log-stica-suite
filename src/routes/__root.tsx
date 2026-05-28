@@ -72,11 +72,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Nery Logística" },
+      { name: "description", content: "Plataforma de gestão logística e financeira da Nery." },
+      { name: "author", content: "Nery Logística" },
+      { property: "og:title", content: "Nery Logística" },
+      { property: "og:description", content: "Gestão logística e financeira." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
@@ -108,13 +108,26 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+import { ThemeProvider } from "@/components/theme-provider";
+import { AppSidebar } from "@/components/app-sidebar";
+import { Topbar } from "@/components/topbar";
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <ThemeProvider>
+        <div className="flex min-h-screen w-full bg-background text-foreground">
+          <AppSidebar />
+          <div className="flex-1 flex flex-col min-w-0">
+            <Topbar />
+            <main className="flex-1 overflow-x-hidden">
+              <Outlet />
+            </main>
+          </div>
+        </div>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
