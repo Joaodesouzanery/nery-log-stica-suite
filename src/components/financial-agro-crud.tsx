@@ -782,7 +782,7 @@ function ModuleSection({
     onSuccess: () => {
       toast.success("Registro adicionado.");
       setOpen(false);
-      void queryClient.invalidateQueries({ queryKey: ["financial-records", module.id] });
+      void queryClient.invalidateQueries({ queryKey: ["financial-records-all"] });
     },
     onError: (error) => toast.error(error.message),
   });
@@ -792,7 +792,7 @@ function ModuleSection({
     onSuccess: () => {
       toast.success("Registro atualizado.");
       setOpen(false);
-      void queryClient.invalidateQueries({ queryKey: ["financial-records", module.id] });
+      void queryClient.invalidateQueries({ queryKey: ["financial-records-all"] });
     },
     onError: (error) => toast.error(error.message),
   });
@@ -801,7 +801,7 @@ function ModuleSection({
     mutationFn: deleteFinancialRecord,
     onSuccess: () => {
       toast.success("Registro excluido.");
-      void queryClient.invalidateQueries({ queryKey: ["financial-records", module.id] });
+      void queryClient.invalidateQueries({ queryKey: ["financial-records-all"] });
     },
     onError: (error) => toast.error(error.message),
   });
