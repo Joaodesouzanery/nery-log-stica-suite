@@ -551,63 +551,105 @@ function buildDashboard(recordsByModule: RecordsByModule) {
 
 export function FinancialAgroCrud() {
   const { demoMode } = useDemoMode();
-  const queryResults = useQueries({
-    queries: financialModules.map((module) => ({
-      queryKey: ["financial-records", module.id],
-      queryFn: () => listFinancialRecords(module.id),
-      enabled: !demoMode,
-    })),
+  const allQuery = useQuery({
+    queryKey: ["financial-records-all"],
+    queryFn: listAllFinancialRecords,
+    enabled: !demoMode,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 
-  const recordsByModule = useMemo(() => {
+  const recordsByModule = useMemo<RecordsByModule>(() => {
     if (demoMode) return demoRecords;
-    return Object.fromEntries(
-      financialModules.map((module, index) => [module.id, queryResults[index].data ?? []]),
-    ) as RecordsByModule;
-  }, [demoMode, queryResults]);
+    const grouped: RecordsByModule = Object.fromEntries(
+      financialModules.map((m) => [m.id, [] as FinancialRecord[]]),
+    );
+    for (const rec of allQuery.data ?? []) {
+      if (grouped[rec.module]) grouped[rec.module].push(rec);
+    }
+    return grouped;
+  }, [demoMode, allQuery.data]);
 
   const dashboard = useMemo(() => buildDashboard(recordsByModule), [recordsByModule]);
-  const loading = queryResults.some((query) => query.isLoading);
+  const loading = !demoMode && allQuery.isLoading;
 
   return (
     <div className="space-y-6">
       {!demoMode && !isSupabaseConfigured && (
-        <div className="rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm text-warning-foreground">
+        <div className="rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm text-warning-foreground">
           Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para carregar e salvar dados reais no
           Supabase.
         </div>
       )}
 
-      <FinancialDashboard dashboard={dashboard} demoMode={demoMode} loading={loading} />
+      {loading ? (
+        <FinancialSkeleton />
+      ) : (
+        <>
+          <FinancialDashboard dashboard={dashboard} demoMode={demoMode} loading={loading} />
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-        {financialModules.map((module) => {
-          const summary = moduleSummary(module.id, recordsByModule[module.id] ?? []);
-          return (
-            <a
-              key={module.id}
-              href={`#${module.id}`}
-              className="rounded-lg border border-border bg-card p-3 text-sm hover:bg-muted/60"
-            >
-              <div className="flex items-center gap-2 font-medium">
-                <module.icon className="h-4 w-4 text-primary" />
-                {module.shortLabel}
-              </div>
-              <div className="mt-2 text-lg font-semibold">{summary.headline}</div>
-              <div className="text-xs text-muted-foreground">{summary.caption}</div>
-            </a>
-          );
-        })}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+            {financialModules.map((module) => {
+              const summary = moduleSummary(module.id, recordsByModule[module.id] ?? []);
+              return (
+                <a
+                  key={module.id}
+                  href={`#${module.id}`}
+                  className="rounded-xl border border-border bg-card p-3.5 text-sm shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-center gap-2 text-[12px] font-medium text-muted-foreground">
+                    <module.icon className="h-3.5 w-3.5 text-primary" />
+                    {module.shortLabel}
+                  </div>
+                  <div className="mt-2 text-base font-semibold tracking-tight text-foreground">
+                    {summary.headline}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground truncate">{summary.caption}</div>
+                </a>
+              );
+            })}
+          </div>
+
+          <div className="grid gap-5">
+            {financialModules.map((module) => (
+              <ModuleSection
+                key={module.id}
+                module={module}
+                demoMode={demoMode}
+                records={recordsByModule[module.id] ?? []}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function FinancialSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="h-5 w-48 rounded bg-muted" />
+        <div className="mt-2 h-3 w-72 rounded bg-muted/70" />
+        <div className="mt-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border bg-background/60 p-3">
+              <div className="h-3 w-16 rounded bg-muted" />
+              <div className="mt-2 h-5 w-24 rounded bg-muted" />
+            </div>
+          ))}
+        </div>
+        <div className="mt-5 h-56 rounded-xl bg-muted/60" />
       </div>
-
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div key={i} className="h-20 rounded-xl border border-border bg-card" />
+        ))}
+      </div>
       <div className="grid gap-5">
-        {financialModules.map((module) => (
-          <ModuleSection
-            key={module.id}
-            module={module}
-            demoMode={demoMode}
-            records={recordsByModule[module.id] ?? []}
-          />
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-48 rounded-xl border border-border bg-card" />
         ))}
       </div>
     </div>
