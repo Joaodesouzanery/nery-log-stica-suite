@@ -24,7 +24,7 @@ import {
   deleteFinancialRecord,
   FinancialRecord,
   isSupabaseConfigured,
-  listFinancialRecords,
+  listAllFinancialRecords,
   updateFinancialRecord,
 } from "@/lib/supabase-financial";
 import { useDemoMode } from "@/hooks/use-demo-mode";
