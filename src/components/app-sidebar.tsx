@@ -1,7 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
-  Route,
   Wallet,
   Package,
   HelpCircle,
@@ -16,10 +15,9 @@ import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 
-const items = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, group: "GERAL" },
-  { title: "Financeiro Agro", url: "/financeiro", icon: Wallet, group: "GERAL" },
-  { title: "Logistica e Distribuicao", url: "/logistica", icon: Route, group: "GERAL" },
+const generalItems = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Financeiro", url: "/financeiro", icon: Wallet },
 ];
 
 const supportItems = [
@@ -39,36 +37,50 @@ export function AppSidebar() {
     <aside
       className={cn(
         "sticky top-0 h-screen flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-200 shrink-0",
-        collapsed ? "w-[72px]" : "w-[260px]",
+        collapsed ? "w-[76px]" : "w-[260px]",
       )}
     >
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border">
-        <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-sm shrink-0">
-          <Package className="w-5 h-5 text-primary-foreground" />
+      {/* Brand */}
+      <div className="flex items-center gap-3 px-5 h-16 border-b border-sidebar-border">
+        <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center shadow-sm shrink-0">
+          <Package className="w-5 h-5 text-primary-foreground" strokeWidth={2.25} />
         </div>
         {!collapsed && (
-          <div className="flex-1 min-w-0">
-            <div className="font-semibold text-base tracking-tight text-foreground">Nery</div>
-            <div className="text-xs text-muted-foreground -mt-0.5">Logística</div>
+          <div className="flex-1 min-w-0 leading-tight">
+            <div className="font-semibold text-[15px] tracking-tight text-foreground">Nery</div>
+            <div className="text-[11px] text-muted-foreground">Logística</div>
           </div>
         )}
-        <button
-          onClick={() => setCollapsed((c) => !c)}
-          className="text-muted-foreground hover:text-foreground"
-          aria-label="Recolher"
-        >
-          <PanelLeft className="w-4 h-4" />
-        </button>
+        {!collapsed && (
+          <button
+            onClick={() => setCollapsed(true)}
+            className="text-muted-foreground hover:text-foreground transition"
+            aria-label="Recolher"
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
+      {collapsed && (
+        <button
+          onClick={() => setCollapsed(false)}
+          className="mx-auto mt-3 w-8 h-8 rounded-md flex items-center justify-center text-muted-foreground hover:bg-sidebar-accent/60"
+          aria-label="Expandir"
+        >
+          <PanelLeft className="w-4 h-4 rotate-180" />
+        </button>
+      )}
+
+      {/* Main nav */}
       <nav className="flex-1 px-3 py-5 overflow-y-auto">
         {!collapsed && (
-          <div className="px-2 mb-2 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">
+          <div className="px-2 mb-2 text-[10px] font-semibold tracking-[0.14em] text-muted-foreground/80">
             GERAL
           </div>
         )}
         <ul className="space-y-1">
-          {items.map((i) => {
+          {generalItems.map((i) => {
             const active = isActive(i.url);
             return (
               <li key={i.title}>
@@ -77,30 +89,57 @@ export function AppSidebar() {
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                     active
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground border border-sidebar-border shadow-sm"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent/50",
+                      ? "bg-card text-foreground border border-sidebar-border shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent/40",
+                    collapsed && "justify-center px-0",
                   )}
                 >
-                  <i.icon className={cn("w-4 h-4 shrink-0", active && "text-primary")} />
+                  <i.icon
+                    className={cn("w-[18px] h-[18px] shrink-0", active && "text-primary")}
+                    strokeWidth={active ? 2.25 : 1.85}
+                  />
                   {!collapsed && <span>{i.title}</span>}
                 </Link>
               </li>
             );
           })}
         </ul>
+
+        {!collapsed && (
+          <div className="px-2 mt-7 mb-2 text-[10px] font-semibold tracking-[0.14em] text-muted-foreground/80">
+            SUPORTE
+          </div>
+        )}
+        <ul className="space-y-1">
+          {supportItems.map((i) => (
+            <li key={i.title}>
+              <a
+                href={i.url}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/40",
+                  collapsed && "justify-center px-0",
+                )}
+              >
+                <i.icon className="w-[18px] h-[18px] shrink-0" strokeWidth={1.85} />
+                {!collapsed && <span>{i.title}</span>}
+              </a>
+            </li>
+          ))}
+        </ul>
       </nav>
 
-      <div className="px-3 py-4 border-t border-sidebar-border space-y-1">
+      {/* Footer */}
+      <div className="px-3 py-4 border-t border-sidebar-border space-y-2">
         <div
           className={cn(
-            "flex items-center rounded-lg px-3 py-2 text-sm text-sidebar-foreground",
-            collapsed ? "justify-center" : "justify-between gap-3",
+            "flex items-center rounded-lg px-3 py-2 text-sm",
+            collapsed ? "justify-center" : "justify-between gap-3 bg-sidebar-accent/40",
           )}
         >
           {!collapsed && (
-            <div>
-              <div className="font-medium">DEMO</div>
-              <div className="text-[11px] text-muted-foreground">
+            <div className="min-w-0">
+              <div className="text-[12px] font-semibold">Modo DEMO</div>
+              <div className="text-[10.5px] text-muted-foreground truncate">
                 {demoMode ? "Dados demonstrativos" : "Dados reais"}
               </div>
             </div>
@@ -111,37 +150,31 @@ export function AppSidebar() {
             aria-label="Alternar dados demonstrativos"
           />
         </div>
-        {!collapsed && (
-          <div className="px-2 mb-2 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">
-            SUPORTE
-          </div>
-        )}
-        {supportItems.map((i) => (
-          <a
-            key={i.title}
-            href={i.url}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50"
-          >
-            <i.icon className="w-4 h-4 shrink-0" />
-            {!collapsed && <span>{i.title}</span>}
-          </a>
-        ))}
+
         <button
           onClick={toggle}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50"
+          className={cn(
+            "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/40",
+            collapsed && "justify-center px-0",
+          )}
         >
-          {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          {theme === "dark" ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
           {!collapsed && <span>{theme === "dark" ? "Modo Claro" : "Modo Escuro"}</span>}
         </button>
 
-        <div className="mt-3 flex items-center gap-3 px-2 py-2">
+        <div
+          className={cn(
+            "mt-1 flex items-center gap-3 px-2 py-2 rounded-lg",
+            !collapsed && "hover:bg-sidebar-accent/40",
+          )}
+        >
           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-chart-2 flex items-center justify-center text-primary-foreground text-sm font-semibold shrink-0">
             N
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium truncate text-foreground">Nery Admin</div>
-              <div className="text-xs text-muted-foreground truncate">admin@nery.com</div>
+              <div className="text-[11px] text-muted-foreground truncate">admin@nery.com</div>
             </div>
           )}
         </div>
