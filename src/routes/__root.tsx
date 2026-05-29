@@ -76,10 +76,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Plataforma de gestão logística e financeira da Nery." },
       { name: "author", content: "Nery Logística" },
       { property: "og:title", content: "Nery Logística" },
-      { property: "og:description", content: "Gestão logística e financeira." },
+      { property: "og:description", content: "Plataforma de gestão logística e financeira da Nery." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Nery Logística" },
+      { name: "twitter:description", content: "Plataforma de gestão logística e financeira da Nery." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7af7d6bf-f396-4f81-a485-7553420dd0f6/id-preview-2e9a8ee6--7f739fbe-ce9b-4f54-929f-b6d0e919b543.lovable.app-1779997135957.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7af7d6bf-f396-4f81-a485-7553420dd0f6/id-preview-2e9a8ee6--7f739fbe-ce9b-4f54-929f-b6d0e919b543.lovable.app-1779997135957.png" },
     ],
     links: [
       {
