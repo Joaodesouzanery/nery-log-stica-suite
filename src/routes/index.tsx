@@ -26,6 +26,7 @@ import {
 import { toast } from "sonner";
 import { StatCard } from "@/components/stat-card";
 import { useDemoMode } from "@/hooks/use-demo-mode";
+import { CartoMap } from "@/components/carto-map";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -117,53 +118,6 @@ function downloadCsv(rows: ShipmentRow[]) {
   link.download = "cargas-nery.csv";
   link.click();
   URL.revokeObjectURL(url);
-}
-
-function MapboxTrackingMap({ demoMode }: { demoMode: boolean }) {
-  const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
-
-  if (!token) {
-    return (
-      <div className="mt-3 h-36 rounded-lg border border-dashed border-border bg-muted/40 p-4 text-xs text-muted-foreground flex items-center justify-center text-center">
-        Configure VITE_MAPBOX_TOKEN para renderizar o mapa Mapbox.
-      </div>
-    );
-  }
-
-  const geojson = encodeURIComponent(
-    JSON.stringify({
-      type: "Feature",
-      properties: { stroke: "#f97316", "stroke-width": 3 },
-      geometry: {
-        type: "LineString",
-        coordinates: [
-          [-46.6333, -23.5505],
-          [-45.2, -23.1],
-          [-43.1729, -22.9068],
-        ],
-      },
-    }),
-  );
-  const overlays = [
-    "pin-s-a+f97316(-46.6333,-23.5505)",
-    "pin-s-b+22c55e(-43.1729,-22.9068)",
-    `geojson(${geojson})`,
-  ].join(",");
-  const url = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${overlays}/-44.8,-23.2,6/640x260?access_token=${token}`;
-
-  return (
-    <div className="mt-3 h-36 rounded-lg overflow-hidden border border-border bg-muted">
-      <img
-        src={url}
-        alt={
-          demoMode
-            ? "Mapa Mapbox demonstrativo da carga em transito"
-            : "Mapa Mapbox de rastreamento"
-        }
-        className="h-full w-full object-cover"
-      />
-    </div>
-  );
 }
 
 function DashboardPage() {
@@ -292,7 +246,21 @@ function DashboardPage() {
               <p className="text-xs text-muted-foreground mt-0.5">Status ao vivo das cargas.</p>
             </div>
           </div>
-          <MapboxTrackingMap demoMode={demoMode} />
+          <CartoMap
+            variant="voyager"
+            centerLabel={demoMode ? "Rota SP - RJ" : "Sem rota ativa"}
+            className="mt-3 h-36"
+            route={[
+              { x: 24, y: 68 },
+              { x: 48, y: 52 },
+              { x: 76, y: 35 },
+            ]}
+            points={[
+              { label: "Origem", x: 24, y: 68, tone: "primary" },
+              { label: "Atual", x: 48, y: 52, tone: "warning" },
+              { label: "Destino", x: 76, y: 35, tone: "success" },
+            ]}
+          />
           <div className="mt-3 text-xs">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">ID da carga</span>

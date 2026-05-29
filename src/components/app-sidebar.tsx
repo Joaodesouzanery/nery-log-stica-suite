@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
+  Route,
   Wallet,
   Package,
   HelpCircle,
@@ -18,6 +19,7 @@ import { useDemoMode } from "@/hooks/use-demo-mode";
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, group: "GERAL" },
   { title: "Financeiro Agro", url: "/financeiro", icon: Wallet, group: "GERAL" },
+  { title: "Logistica e Distribuicao", url: "/logistica", icon: Route, group: "GERAL" },
 ];
 
 const supportItems = [
