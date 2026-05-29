@@ -836,7 +836,7 @@ function ModuleSection({
   };
 
   return (
-    <section id={module.id} className="scroll-mt-20 rounded-lg border border-border bg-card p-5">
+    <section id={module.id} className="scroll-mt-20 rounded-xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
