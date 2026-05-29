@@ -666,7 +666,7 @@ function FinancialDashboard({
   loading: boolean;
 }) {
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
+    <section className="rounded-xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold tracking-tight">Dashboard Financeiro</h2>
@@ -755,7 +755,7 @@ function DashKpi({
     info: "text-primary",
   };
   return (
-    <div className="rounded-lg border border-border bg-background/60 p-3">
+    <div className="rounded-xl border border-border bg-background/60 p-3">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className={cn("mt-1 text-lg font-semibold", classes[tone])}>{value}</div>
     </div>
@@ -861,19 +861,19 @@ function ModuleSection({
       </div>
 
       <div className="mb-4 grid gap-3 md:grid-cols-3">
-        <div className="rounded-lg border border-border bg-background/60 p-3">
+        <div className="rounded-xl border border-border bg-background/60 p-3">
           <div className="text-xs text-muted-foreground">Resumo calculado</div>
           <div className="mt-1 text-lg font-semibold">{summary.headline}</div>
           <div className="text-xs text-muted-foreground">{summary.caption}</div>
         </div>
-        <div className="rounded-lg border border-border bg-background/60 p-3">
+        <div className="rounded-xl border border-border bg-background/60 p-3">
           <div className="text-xs text-muted-foreground">Registros</div>
           <div className="mt-1 text-lg font-semibold">{records.length}</div>
           <div className="text-xs text-muted-foreground">
             {demoMode ? "Somente leitura" : "Editavel"}
           </div>
         </div>
-        <div className="rounded-lg border border-border bg-background/60 p-3">
+        <div className="rounded-xl border border-border bg-background/60 p-3">
           <div className="text-xs text-muted-foreground">Motor de regra</div>
           <div className="mt-1 text-lg font-semibold">Ativo</div>
           <div className="text-xs text-muted-foreground">calculo automatico por modulo</div>
