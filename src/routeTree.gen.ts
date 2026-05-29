@@ -9,9 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LogisticaRouteImport } from './routes/logistica'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as IndexRouteImport } from './routes/index'
 
+const LogisticaRoute = LogisticaRouteImport.update({
+  id: '/logistica',
+  path: '/logistica',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FinanceiroRoute = FinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
@@ -26,31 +32,42 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/financeiro': typeof FinanceiroRoute
+  '/logistica': typeof LogisticaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/financeiro': typeof FinanceiroRoute
+  '/logistica': typeof LogisticaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/financeiro': typeof FinanceiroRoute
+  '/logistica': typeof LogisticaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/financeiro'
+  fullPaths: '/' | '/financeiro' | '/logistica'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/financeiro'
-  id: '__root__' | '/' | '/financeiro'
+  to: '/' | '/financeiro' | '/logistica'
+  id: '__root__' | '/' | '/financeiro' | '/logistica'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   FinanceiroRoute: typeof FinanceiroRoute
+  LogisticaRoute: typeof LogisticaRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/logistica': {
+      id: '/logistica'
+      path: '/logistica'
+      fullPath: '/logistica'
+      preLoaderRoute: typeof LogisticaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/financeiro': {
       id: '/financeiro'
       path: '/financeiro'
@@ -71,6 +88,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   FinanceiroRoute: FinanceiroRoute,
+  LogisticaRoute: LogisticaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

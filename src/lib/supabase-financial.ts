@@ -21,6 +21,15 @@ export async function listFinancialRecords(module: string): Promise<FinancialRec
   return (data ?? []) as FinancialRecord[];
 }
 
+export async function listAllFinancialRecords(): Promise<FinancialRecord[]> {
+  const { data, error } = await supabase
+    .from("financial_records")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as FinancialRecord[];
+}
+
 export async function createFinancialRecord(input: {
   module: string;
   payload: Record<string, string>;

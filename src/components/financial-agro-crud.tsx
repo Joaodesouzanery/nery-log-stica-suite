@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Banknote,
@@ -24,7 +24,7 @@ import {
   deleteFinancialRecord,
   FinancialRecord,
   isSupabaseConfigured,
-  listFinancialRecords,
+  listAllFinancialRecords,
   updateFinancialRecord,
 } from "@/lib/supabase-financial";
 import { useDemoMode } from "@/hooks/use-demo-mode";
@@ -551,63 +551,105 @@ function buildDashboard(recordsByModule: RecordsByModule) {
 
 export function FinancialAgroCrud() {
   const { demoMode } = useDemoMode();
-  const queryResults = useQueries({
-    queries: financialModules.map((module) => ({
-      queryKey: ["financial-records", module.id],
-      queryFn: () => listFinancialRecords(module.id),
-      enabled: !demoMode,
-    })),
+  const allQuery = useQuery({
+    queryKey: ["financial-records-all"],
+    queryFn: listAllFinancialRecords,
+    enabled: !demoMode,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
 
-  const recordsByModule = useMemo(() => {
+  const recordsByModule = useMemo<RecordsByModule>(() => {
     if (demoMode) return demoRecords;
-    return Object.fromEntries(
-      financialModules.map((module, index) => [module.id, queryResults[index].data ?? []]),
-    ) as RecordsByModule;
-  }, [demoMode, queryResults]);
+    const grouped: RecordsByModule = Object.fromEntries(
+      financialModules.map((m) => [m.id, [] as FinancialRecord[]]),
+    );
+    for (const rec of allQuery.data ?? []) {
+      if (grouped[rec.module]) grouped[rec.module].push(rec);
+    }
+    return grouped;
+  }, [demoMode, allQuery.data]);
 
   const dashboard = useMemo(() => buildDashboard(recordsByModule), [recordsByModule]);
-  const loading = queryResults.some((query) => query.isLoading);
+  const loading = !demoMode && allQuery.isLoading;
 
   return (
     <div className="space-y-6">
       {!demoMode && !isSupabaseConfigured && (
-        <div className="rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm text-warning-foreground">
+        <div className="rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm text-warning-foreground">
           Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para carregar e salvar dados reais no
           Supabase.
         </div>
       )}
 
-      <FinancialDashboard dashboard={dashboard} demoMode={demoMode} loading={loading} />
+      {loading ? (
+        <FinancialSkeleton />
+      ) : (
+        <>
+          <FinancialDashboard dashboard={dashboard} demoMode={demoMode} loading={loading} />
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-        {financialModules.map((module) => {
-          const summary = moduleSummary(module.id, recordsByModule[module.id] ?? []);
-          return (
-            <a
-              key={module.id}
-              href={`#${module.id}`}
-              className="rounded-lg border border-border bg-card p-3 text-sm hover:bg-muted/60"
-            >
-              <div className="flex items-center gap-2 font-medium">
-                <module.icon className="h-4 w-4 text-primary" />
-                {module.shortLabel}
-              </div>
-              <div className="mt-2 text-lg font-semibold">{summary.headline}</div>
-              <div className="text-xs text-muted-foreground">{summary.caption}</div>
-            </a>
-          );
-        })}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+            {financialModules.map((module) => {
+              const summary = moduleSummary(module.id, recordsByModule[module.id] ?? []);
+              return (
+                <a
+                  key={module.id}
+                  href={`#${module.id}`}
+                  className="rounded-xl border border-border bg-card p-3.5 text-sm shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-center gap-2 text-[12px] font-medium text-muted-foreground">
+                    <module.icon className="h-3.5 w-3.5 text-primary" />
+                    {module.shortLabel}
+                  </div>
+                  <div className="mt-2 text-base font-semibold tracking-tight text-foreground">
+                    {summary.headline}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground truncate">{summary.caption}</div>
+                </a>
+              );
+            })}
+          </div>
+
+          <div className="grid gap-5">
+            {financialModules.map((module) => (
+              <ModuleSection
+                key={module.id}
+                module={module}
+                demoMode={demoMode}
+                records={recordsByModule[module.id] ?? []}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function FinancialSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="h-5 w-48 rounded bg-muted" />
+        <div className="mt-2 h-3 w-72 rounded bg-muted/70" />
+        <div className="mt-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border bg-background/60 p-3">
+              <div className="h-3 w-16 rounded bg-muted" />
+              <div className="mt-2 h-5 w-24 rounded bg-muted" />
+            </div>
+          ))}
+        </div>
+        <div className="mt-5 h-56 rounded-xl bg-muted/60" />
       </div>
-
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div key={i} className="h-20 rounded-xl border border-border bg-card" />
+        ))}
+      </div>
       <div className="grid gap-5">
-        {financialModules.map((module) => (
-          <ModuleSection
-            key={module.id}
-            module={module}
-            demoMode={demoMode}
-            records={recordsByModule[module.id] ?? []}
-          />
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-48 rounded-xl border border-border bg-card" />
         ))}
       </div>
     </div>
@@ -624,7 +666,7 @@ function FinancialDashboard({
   loading: boolean;
 }) {
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
+    <section className="rounded-xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold tracking-tight">Dashboard Financeiro</h2>
@@ -713,7 +755,7 @@ function DashKpi({
     info: "text-primary",
   };
   return (
-    <div className="rounded-lg border border-border bg-background/60 p-3">
+    <div className="rounded-xl border border-border bg-background/60 p-3">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className={cn("mt-1 text-lg font-semibold", classes[tone])}>{value}</div>
     </div>
@@ -740,7 +782,7 @@ function ModuleSection({
     onSuccess: () => {
       toast.success("Registro adicionado.");
       setOpen(false);
-      void queryClient.invalidateQueries({ queryKey: ["financial-records", module.id] });
+      void queryClient.invalidateQueries({ queryKey: ["financial-records-all"] });
     },
     onError: (error) => toast.error(error.message),
   });
@@ -750,7 +792,7 @@ function ModuleSection({
     onSuccess: () => {
       toast.success("Registro atualizado.");
       setOpen(false);
-      void queryClient.invalidateQueries({ queryKey: ["financial-records", module.id] });
+      void queryClient.invalidateQueries({ queryKey: ["financial-records-all"] });
     },
     onError: (error) => toast.error(error.message),
   });
@@ -759,7 +801,7 @@ function ModuleSection({
     mutationFn: deleteFinancialRecord,
     onSuccess: () => {
       toast.success("Registro excluido.");
-      void queryClient.invalidateQueries({ queryKey: ["financial-records", module.id] });
+      void queryClient.invalidateQueries({ queryKey: ["financial-records-all"] });
     },
     onError: (error) => toast.error(error.message),
   });
@@ -794,7 +836,7 @@ function ModuleSection({
   };
 
   return (
-    <section id={module.id} className="scroll-mt-20 rounded-lg border border-border bg-card p-5">
+    <section id={module.id} className="scroll-mt-20 rounded-xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -819,19 +861,19 @@ function ModuleSection({
       </div>
 
       <div className="mb-4 grid gap-3 md:grid-cols-3">
-        <div className="rounded-lg border border-border bg-background/60 p-3">
+        <div className="rounded-xl border border-border bg-background/60 p-3">
           <div className="text-xs text-muted-foreground">Resumo calculado</div>
           <div className="mt-1 text-lg font-semibold">{summary.headline}</div>
           <div className="text-xs text-muted-foreground">{summary.caption}</div>
         </div>
-        <div className="rounded-lg border border-border bg-background/60 p-3">
+        <div className="rounded-xl border border-border bg-background/60 p-3">
           <div className="text-xs text-muted-foreground">Registros</div>
           <div className="mt-1 text-lg font-semibold">{records.length}</div>
           <div className="text-xs text-muted-foreground">
             {demoMode ? "Somente leitura" : "Editavel"}
           </div>
         </div>
-        <div className="rounded-lg border border-border bg-background/60 p-3">
+        <div className="rounded-xl border border-border bg-background/60 p-3">
           <div className="text-xs text-muted-foreground">Motor de regra</div>
           <div className="mt-1 text-lg font-semibold">Ativo</div>
           <div className="text-xs text-muted-foreground">calculo automatico por modulo</div>

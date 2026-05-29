@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Wallet,
+  Truck,
   Package,
   HelpCircle,
   Settings,
@@ -17,6 +18,7 @@ import { useDemoMode } from "@/hooks/use-demo-mode";
 
 const generalItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Logística e Distribuição", url: "/logistica", icon: Truck },
   { title: "Financeiro", url: "/financeiro", icon: Wallet },
 ];
 
