@@ -64,7 +64,7 @@ const financialModules: ModuleConfig[] = [
     description: "Registro de entradas e saidas adaptado ao produtor.",
     icon: Banknote,
     fields: [
-      { key: "descricao", label: "Descricao" },
+      { key: "descricao", label: "Descrição" },
       { key: "tipo", label: "Tipo" },
       { key: "categoria", label: "Categoria" },
       { key: "valor", label: "Valor", type: "number" },
@@ -75,20 +75,20 @@ const financialModules: ModuleConfig[] = [
     id: "custos",
     label: "Custos por Unidade",
     shortLabel: "Custos",
-    description: "Calculo automatico do custo de producao por duzia, saca ou kg.",
+    description: "Cálculo automático do custo de producao por dúzia, saca ou kg.",
     icon: Calculator,
     fields: [
       { key: "produto", label: "Produto" },
       { key: "unidade", label: "Unidade" },
       { key: "custo_total", label: "Custo total", type: "number" },
       { key: "quantidade", label: "Quantidade", type: "number" },
-      { key: "preco_venda", label: "Preco venda", type: "number" },
+      { key: "preço_venda", label: "Preço venda", type: "number" },
     ],
   },
   {
-    id: "inadimplencia",
-    label: "Controle de Inadimplencia",
-    shortLabel: "Inadimplencia",
+    id: "inadimplência",
+    label: "Controle de Inadimplência",
+    shortLabel: "Inadimplência",
     description: "Alertas de pagamentos pendentes de clientes.",
     icon: AlertTriangle,
     fields: [
@@ -100,7 +100,7 @@ const financialModules: ModuleConfig[] = [
   },
   {
     id: "estoque",
-    label: "Gestao de Estoque de Produtos Acabados",
+    label: "Gestão de Estoque de Produtos Acabados",
     shortLabel: "Estoque",
     description: "Produtos prontos para venda imediata, reservas e validade.",
     icon: Boxes,
@@ -114,35 +114,35 @@ const financialModules: ModuleConfig[] = [
   },
   {
     id: "equilibrio",
-    label: "Calculo de Ponto de Equilibrio",
-    shortLabel: "Equilibrio",
+    label: "Cálculo de Ponto de Equilíbrio",
+    shortLabel: "Equilíbrio",
     description: "Quanto vender para cobrir os custos.",
     icon: Scale,
     fields: [
       { key: "produto", label: "Produto" },
-      { key: "preco_venda", label: "Preco venda", type: "number" },
-      { key: "custo_variavel", label: "Custo variavel", type: "number" },
+      { key: "preço_venda", label: "Preço venda", type: "number" },
+      { key: "custo_variável", label: "Custo variável", type: "number" },
       { key: "custo_fixo", label: "Custo fixo", type: "number" },
     ],
   },
   {
     id: "compras",
-    label: "Gestao de Compras",
+    label: "Gestão de Compras",
     shortLabel: "Compras",
     description: "Lista baseada na necessidade de insumos.",
     icon: ShoppingCart,
     fields: [
       { key: "insumo", label: "Insumo" },
       { key: "estoque_atual", label: "Estoque atual", type: "number" },
-      { key: "estoque_minimo", label: "Estoque minimo", type: "number" },
+      { key: "estoque_mínimo", label: "Estoque mínimo", type: "number" },
       { key: "consumo_semanal", label: "Consumo semanal", type: "number" },
       { key: "fornecedor", label: "Fornecedor" },
     ],
   },
   {
     id: "credito",
-    label: "Controle de Credito Rural",
-    shortLabel: "Credito",
+    label: "Controle de Crédito Rural",
+    shortLabel: "Crédito",
     description: "Acompanhamento de parcelas de financiamentos.",
     icon: Landmark,
     fields: [
@@ -154,17 +154,17 @@ const financialModules: ModuleConfig[] = [
     ],
   },
   {
-    id: "precos",
-    label: "Tabela de Precos Dinamica",
-    shortLabel: "Precos",
-    description: "Precos para atacado, varejo e assinaturas.",
+    id: "preços",
+    label: "Tabela de Preços Dinamica",
+    shortLabel: "Preços",
+    description: "Preços para atacado, varejo e assinaturas.",
     icon: Tags,
     fields: [
       { key: "produto", label: "Produto" },
       { key: "varejo", label: "Varejo", type: "number" },
       { key: "atacado", label: "Atacado", type: "number" },
       { key: "assinatura", label: "Assinatura", type: "number" },
-      { key: "promocao", label: "Promocao" },
+      { key: "promocao", label: "Promoção" },
     ],
   },
   {
@@ -174,7 +174,7 @@ const financialModules: ModuleConfig[] = [
     description: "Real x planejado por talhao e por safra.",
     icon: MapPin,
     fields: [
-      { key: "talhao", label: "Talhao" },
+      { key: "talhao", label: "Talhão" },
       { key: "safra", label: "Safra" },
       { key: "real", label: "Real", type: "number" },
       { key: "planejado", label: "Planejado", type: "number" },
@@ -182,7 +182,7 @@ const financialModules: ModuleConfig[] = [
   },
   {
     id: "safra",
-    label: "Orcamento de Safra",
+    label: "Orçamento de Safra",
     shortLabel: "Safra",
     description: "Insumos, mao de obra, maquinario e curva de desembolso.",
     icon: ClipboardList,
@@ -200,8 +200,8 @@ const financialModules: ModuleConfig[] = [
     description: "ROI por talhao, hibrido e variedade.",
     icon: Sprout,
     fields: [
-      { key: "talhao", label: "Talhao" },
-      { key: "hibrido", label: "Hibrido" },
+      { key: "talhao", label: "Talhão" },
+      { key: "hibrido", label: "Híbrido" },
       { key: "receita", label: "Receita", type: "number" },
       { key: "custo", label: "Custo", type: "number" },
     ],
@@ -210,20 +210,20 @@ const financialModules: ModuleConfig[] = [
     id: "arrendamento",
     label: "Controle de Arrendamento",
     shortLabel: "Arrendamento",
-    description: "Custo por area, vencimentos e historico de reajustes.",
+    description: "Custo por área, vencimentos e histórico de reajustes.",
     icon: FileText,
     fields: [
       { key: "contrato", label: "Contrato" },
-      { key: "area", label: "Area ha", type: "number" },
+      { key: "área", label: "Area ha", type: "number" },
       { key: "valor_ha", label: "R$/ha", type: "number" },
       { key: "vencimento", label: "Vencimento", type: "date" },
     ],
   },
   {
     id: "contratos",
-    label: "Gestao de Contratos",
+    label: "Gestão de Contratos",
     shortLabel: "Contratos",
-    description: "Compra de insumos, venda de graos e fixacoes.",
+    description: "Compra de insumos, venda de grãos e fixacoes.",
     icon: FileSignature,
     fields: [
       { key: "contrato", label: "Contrato" },
@@ -261,27 +261,27 @@ const demoRecords: RecordsByModule = {
   custos: [
     record("custos", "1", {
       produto: "Ovos caipira",
-      unidade: "duzia",
+      unidade: "dúzia",
       custo_total: "4820",
       quantidade: "1000",
-      preco_venda: "9.90",
+      preço_venda: "9.90",
     }),
     record("custos", "2", {
       produto: "Mel",
       unidade: "kg",
       custo_total: "3100",
       quantidade: "220",
-      preco_venda: "32",
+      preço_venda: "32",
     }),
   ],
-  inadimplencia: [
-    record("inadimplencia", "1", {
+  inadimplência: [
+    record("inadimplência", "1", {
       cliente: "Mercado Central",
       valor: "3200",
       vencimento: "2026-05-20",
       status: "pendente",
     }),
-    record("inadimplencia", "2", {
+    record("inadimplência", "2", {
       cliente: "Restaurante Aurora",
       valor: "5800",
       vencimento: "2026-06-02",
@@ -307,8 +307,8 @@ const demoRecords: RecordsByModule = {
   equilibrio: [
     record("equilibrio", "1", {
       produto: "Ovos caipira",
-      preco_venda: "9.90",
-      custo_variavel: "4.82",
+      preço_venda: "9.90",
+      custo_variável: "4.82",
       custo_fixo: "1200",
     }),
   ],
@@ -316,14 +316,14 @@ const demoRecords: RecordsByModule = {
     record("compras", "1", {
       insumo: "Racao inicial",
       estoque_atual: "420",
-      estoque_minimo: "800",
+      estoque_mínimo: "800",
       consumo_semanal: "210",
       fornecedor: "Agro Sul",
     }),
     record("compras", "2", {
       insumo: "Caixas kraft",
       estoque_atual: "180",
-      estoque_minimo: "300",
+      estoque_mínimo: "300",
       consumo_semanal: "90",
       fornecedor: "Embalagens Norte",
     }),
@@ -337,8 +337,8 @@ const demoRecords: RecordsByModule = {
       vencimento: "2026-06-15",
     }),
   ],
-  precos: [
-    record("precos", "1", {
+  preços: [
+    record("preços", "1", {
       produto: "Ovos caipira",
       varejo: "9.90",
       atacado: "8.40",
@@ -348,7 +348,7 @@ const demoRecords: RecordsByModule = {
   ],
   hectare: [
     record("hectare", "1", {
-      talhao: "Talhao A",
+      talhao: "Talhão A",
       safra: "2025/26",
       real: "3420",
       planejado: "3200",
@@ -364,7 +364,7 @@ const demoRecords: RecordsByModule = {
   ],
   roi: [
     record("roi", "1", {
-      talhao: "Talhao B",
+      talhao: "Talhão B",
       hibrido: "Pioneer P3380",
       receita: "412000",
       custo: "280000",
@@ -373,7 +373,7 @@ const demoRecords: RecordsByModule = {
   arrendamento: [
     record("arrendamento", "1", {
       contrato: "Fazenda Vale Verde",
-      area: "120",
+      área: "120",
       valor_ha: "1850",
       vencimento: "2026-09-30",
     }),
@@ -440,7 +440,7 @@ function moduleSummary(moduleId: string, records: FinancialRecord[]) {
         tone: "info",
       };
     }
-    case "inadimplencia": {
+    case "inadimplência": {
       const today = new Date();
       const overdue = records.filter((r) => {
         const due = dateValue(r.payload.vencimento);
@@ -461,13 +461,13 @@ function moduleSummary(moduleId: string, records: FinancialRecord[]) {
       );
       return {
         headline: available.toLocaleString("pt-BR"),
-        caption: "unidades disponiveis",
+        caption: "unidades disponíveis",
         tone: "success",
       };
     }
     case "equilibrio": {
       const first = records[0]?.payload;
-      const margin = first ? num(first.preco_venda) - num(first.custo_variavel) : 0;
+      const margin = first ? num(first.preço_venda) - num(first.custo_variável) : 0;
       const point = margin > 0 && first ? Math.ceil(num(first.custo_fixo) / margin) : 0;
       return {
         headline: point.toLocaleString("pt-BR"),
@@ -477,7 +477,7 @@ function moduleSummary(moduleId: string, records: FinancialRecord[]) {
     }
     case "compras": {
       const urgent = records.filter(
-        (r) => num(r.payload.estoque_atual) < num(r.payload.estoque_minimo),
+        (r) => num(r.payload.estoque_atual) < num(r.payload.estoque_mínimo),
       );
       return {
         headline: String(urgent.length),
@@ -487,13 +487,13 @@ function moduleSummary(moduleId: string, records: FinancialRecord[]) {
     }
     case "credito": {
       const due = records.reduce((sum, r) => sum + num(r.payload.parcela), 0);
-      return { headline: formatMoney(due), caption: "proximas parcelas", tone: "warning" };
+      return { headline: formatMoney(due), caption: "próximas parcelas", tone: "warning" };
     }
-    case "precos": {
+    case "preços": {
       const avg = records.length
         ? records.reduce((sum, r) => sum + num(r.payload.varejo), 0) / records.length
         : 0;
-      return { headline: formatMoney(avg), caption: "preco medio varejo", tone: "info" };
+      return { headline: formatMoney(avg), caption: "preço médio varejo", tone: "info" };
     }
     default:
       return {
@@ -508,7 +508,7 @@ function buildDashboard(recordsByModule: RecordsByModule) {
   const fluxo = recordsByModule.fluxo ?? [];
   const estoque = recordsByModule.estoque ?? [];
   const compras = recordsByModule.compras ?? [];
-  const inadimplencia = recordsByModule.inadimplencia ?? [];
+  const inadimplência = recordsByModule.inadimplência ?? [];
   const credito = recordsByModule.credito ?? [];
 
   const entradas = fluxo
@@ -522,9 +522,9 @@ function buildDashboard(recordsByModule: RecordsByModule) {
     0,
   );
   const comprasPendentes = compras.filter(
-    (r) => num(r.payload.estoque_atual) < num(r.payload.estoque_minimo),
+    (r) => num(r.payload.estoque_atual) < num(r.payload.estoque_mínimo),
   ).length;
-  const vencidos = inadimplencia.filter((r) => {
+  const vencidos = inadimplência.filter((r) => {
     const due = dateValue(r.payload.vencimento);
     return due
       ? due < new Date() && !String(r.payload.status).toLowerCase().includes("pago")
@@ -538,11 +538,11 @@ function buildDashboard(recordsByModule: RecordsByModule) {
     saldo: entradas - saidas,
     estoquePronto,
     comprasPendentes,
-    inadimplencia: vencidos.reduce((sum, r) => sum + num(r.payload.valor), 0),
+    inadimplência: vencidos.reduce((sum, r) => sum + num(r.payload.valor), 0),
     parcelas,
     chart: [
       { label: "Entradas", valor: entradas },
-      { label: "Saidas", valor: saidas },
+      { label: "Saídas", valor: saidas },
       { label: "Inadimpl.", valor: vencidos.reduce((sum, r) => sum + num(r.payload.valor), 0) },
       { label: "Parcelas", valor: parcelas },
     ],
@@ -688,11 +688,11 @@ function FinancialDashboard({
           tone={dashboard.saldo >= 0 ? "success" : "danger"}
         />
         <DashKpi label="Entradas" value={formatMoney(dashboard.entradas)} tone="success" />
-        <DashKpi label="Saidas" value={formatMoney(dashboard.saidas)} tone="danger" />
+        <DashKpi label="Saídas" value={formatMoney(dashboard.saidas)} tone="danger" />
         <DashKpi
-          label="Inadimplencia"
-          value={formatMoney(dashboard.inadimplencia)}
-          tone={dashboard.inadimplencia ? "warning" : "success"}
+          label="Inadimplência"
+          value={formatMoney(dashboard.inadimplência)}
+          tone={dashboard.inadimplência ? "warning" : "success"}
         />
         <DashKpi
           label="Estoque pronto"
@@ -800,7 +800,7 @@ function ModuleSection({
   const deleteMutation = useMutation({
     mutationFn: deleteFinancialRecord,
     onSuccess: () => {
-      toast.success("Registro excluido.");
+      toast.success("Registro excluído.");
       void queryClient.invalidateQueries({ queryKey: ["financial-records-all"] });
     },
     onError: (error) => toast.error(error.message),
@@ -870,13 +870,13 @@ function ModuleSection({
           <div className="text-xs text-muted-foreground">Registros</div>
           <div className="mt-1 text-lg font-semibold">{records.length}</div>
           <div className="text-xs text-muted-foreground">
-            {demoMode ? "Somente leitura" : "Editavel"}
+            {demoMode ? "Somente leitura" : "Editável"}
           </div>
         </div>
         <div className="rounded-xl border border-border bg-background/60 p-3">
           <div className="text-xs text-muted-foreground">Motor de regra</div>
           <div className="mt-1 text-lg font-semibold">Ativo</div>
-          <div className="text-xs text-muted-foreground">calculo automatico por modulo</div>
+          <div className="text-xs text-muted-foreground">cálculo automático por módulo</div>
         </div>
       </div>
 
@@ -889,7 +889,7 @@ function ModuleSection({
                   {field.label}
                 </th>
               ))}
-              <th className="py-3 text-right font-medium">Acoes</th>
+              <th className="py-3 text-right font-medium">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -912,7 +912,7 @@ function ModuleSection({
                     <button
                       onClick={() => {
                         if (demoMode) {
-                          toast.info("Dados demo nao podem ser excluidos.");
+                          toast.info("Dados demo nao podem ser excluídos.");
                           return;
                         }
                         if (window.confirm("Excluir este registro?")) {
@@ -934,7 +934,7 @@ function ModuleSection({
                   colSpan={module.fields.length + 1}
                   className="py-10 text-center text-sm text-muted-foreground"
                 >
-                  Nenhum registro real cadastrado neste modulo.
+                  Nenhum registro real cadastrado neste módulo.
                 </td>
               </tr>
             )}

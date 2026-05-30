@@ -16,7 +16,6 @@ import {
   Calendar,
   CheckCircle2,
   Download,
-  ExternalLink,
   Gauge,
   MessageCircle,
   Package,
@@ -26,13 +25,17 @@ import {
 import { toast } from "sonner";
 import { StatCard } from "@/components/stat-card";
 import { useDemoMode } from "@/hooks/use-demo-mode";
-import { CartoMap } from "@/components/carto-map";
+import { TrackingMap } from "@/components/tracking-map";
+import { PeriodPicker, defaultPeriod, type PeriodValue } from "@/components/period-picker";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dashboard - Nery Logistica" },
-      { name: "description", content: "Visao geral em tempo real das operacoes Nery Logistica." },
+      { title: "Dashboard — Nery Logística" },
+      {
+        name: "description",
+        content: "Visão geral em tempo real das operações Nery Logística.",
+      },
     ],
   }),
   component: DashboardPage,
@@ -46,18 +49,18 @@ type ShipmentRow = {
   date: string;
   dest: string;
   weight: string;
-  status: "Separando" | "Em transito" | "Entregue";
+  status: "Separando" | "Em trânsito" | "Entregue";
 };
 
 const demoRows: ShipmentRow[] = [
   {
     id: "#100512-25-700JKT",
     exp: "Nery Express",
-    cat: "Carga Padrao",
-    driver: "Joao Pereira",
+    cat: "Carga Padrão",
+    driver: "João Pereira",
     date: "26 Jan, 2026",
-    dest: "Sao Paulo, SP",
-    weight: "15.8 kg",
+    dest: "São Paulo, SP",
+    weight: "15,8 kg",
     status: "Separando",
   },
   {
@@ -67,17 +70,17 @@ const demoRows: ShipmentRow[] = [
     driver: "Carla Souza",
     date: "25 Jan, 2026",
     dest: "Rio de Janeiro, RJ",
-    weight: "7.2 kg",
-    status: "Em transito",
+    weight: "7,2 kg",
+    status: "Em trânsito",
   },
   {
     id: "#220915-25-913BSB",
     exp: "Nery Cargo",
-    cat: "Carga Padrao",
+    cat: "Carga Padrão",
     driver: "Marcos Lima",
     date: "24 Jan, 2026",
-    dest: "Brasilia, DF",
-    weight: "22.4 kg",
+    dest: "Brasília, DF",
+    weight: "22,4 kg",
     status: "Entregue",
   },
   {
@@ -87,8 +90,8 @@ const demoRows: ShipmentRow[] = [
     driver: "Ana Ribeiro",
     date: "23 Jan, 2026",
     dest: "Porto Alegre, RS",
-    weight: "9.6 kg",
-    status: "Em transito",
+    weight: "9,6 kg",
+    status: "Em trânsito",
   },
 ];
 
@@ -101,12 +104,12 @@ const shipmentSeries = Array.from({ length: 16 }, (_, i) => ({
 
 const statusStyle: Record<ShipmentRow["status"], string> = {
   Separando: "bg-warning/15 text-warning-foreground border-warning/30",
-  "Em transito": "bg-primary/15 text-primary border-primary/30",
+  "Em trânsito": "bg-primary/15 text-primary border-primary/30",
   Entregue: "bg-success/15 text-success border-success/30",
 };
 
 function downloadCsv(rows: ShipmentRow[]) {
-  const header = ["ID", "Expedicao", "Categoria", "Motorista", "Data", "Destino", "Peso", "Status"];
+  const header = ["ID", "Expedição", "Categoria", "Motorista", "Data", "Destino", "Peso", "Status"];
   const lines = rows.map((r) => [r.id, r.exp, r.cat, r.driver, r.date, r.dest, r.weight, r.status]);
   const csv = [header, ...lines]
     .map((line) => line.map((cell) => `"${cell}"`).join(","))
@@ -122,6 +125,7 @@ function downloadCsv(rows: ShipmentRow[]) {
 
 function DashboardPage() {
   const { demoMode } = useDemoMode();
+  const [period, setPeriod] = useState<PeriodValue>(defaultPeriod());
   const [query, setQuery] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
   const [onlyTransit, setOnlyTransit] = useState(false);
@@ -129,8 +133,10 @@ function DashboardPage() {
 
   const visibleRows = useMemo(() => {
     return rows
-      .filter((r) => (onlyTransit ? r.status === "Em transito" : true))
-      .filter((r) => Object.values(r).join(" ").toLowerCase().includes(query.toLowerCase()))
+      .filter((r) => (onlyTransit ? r.status === "Em trânsito" : true))
+      .filter((r) =>
+        Object.values(r).join(" ").toLowerCase().includes(query.toLowerCase()),
+      )
       .sort((a, b) => (sortAsc ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date)));
   }, [onlyTransit, query, rows, sortAsc]);
 
@@ -143,22 +149,18 @@ function DashboardPage() {
     <div className="px-8 py-6 space-y-5 max-w-[1600px] mx-auto">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Visao Geral</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Visão Geral</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {demoMode ? "Dados demonstrativos da operacao." : "Dados reais da operacao cadastrada."}
+            {demoMode
+              ? "Dados demonstrativos da operação."
+              : "Dados reais da operação cadastrada."}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => toast.info("Filtro de periodo aplicado: Janeiro 2026.")}
-            className="h-9 px-3 rounded-lg border border-border bg-card text-sm flex items-center gap-2 hover:bg-muted"
-          >
-            <Calendar className="w-4 h-4" />
-            Janeiro 2026
-          </button>
+          <PeriodPicker value={period} onChange={setPeriod} />
           <button
             onClick={() => downloadCsv(visibleRows)}
-            className="h-9 px-3 rounded-lg border border-border bg-card text-sm flex items-center gap-2 hover:bg-muted"
+            className="h-10 px-4 rounded-lg border border-border bg-card text-sm flex items-center gap-2 hover:bg-muted transition-colors"
           >
             <Download className="w-4 h-4" />
             Exportar
@@ -166,8 +168,12 @@ function DashboardPage() {
         </div>
       </div>
 
+      {/* Big tracking map on top */}
+      <TrackingMap />
+
+      {/* KPIs + Revenue */}
       <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-12 lg:col-span-6 grid grid-cols-2 gap-3">
+        <div className="col-span-12 lg:col-span-8 grid grid-cols-2 lg:grid-cols-4 gap-3">
           <StatCard
             icon={CheckCircle2}
             label="Entregas no Prazo"
@@ -194,16 +200,16 @@ function DashboardPage() {
           />
         </div>
 
-        <div className="col-span-12 lg:col-span-3 bg-card border border-border rounded-lg p-4">
+        <div className="col-span-12 lg:col-span-4 bg-card border border-border rounded-xl p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
           <div className="flex items-start justify-between">
             <div>
               <h3 className="font-semibold">Receita</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Resumo de fretes do mes.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Resumo de fretes do mês.</p>
             </div>
           </div>
           <div className="flex justify-between mt-3 text-xs">
             <div>
-              <div className="text-muted-foreground">Padrao</div>
+              <div className="text-muted-foreground">Padrão</div>
               <div className="font-semibold text-foreground mt-1">
                 {demoMode ? "R$ 90.000" : "R$ 0"}
               </div>
@@ -238,76 +244,13 @@ function DashboardPage() {
             </div>
           </div>
         </div>
-
-        <div className="col-span-12 lg:col-span-3 bg-card border border-border rounded-lg p-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="font-semibold">Rastreamento</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Status ao vivo das cargas.</p>
-            </div>
-          </div>
-          <CartoMap
-            variant="voyager"
-            centerLabel={demoMode ? "Rota SP - RJ" : "Sem rota ativa"}
-            className="mt-3 h-36"
-            route={[
-              { x: 24, y: 68 },
-              { x: 48, y: 52 },
-              { x: 76, y: 35 },
-            ]}
-            points={[
-              { label: "Origem", x: 24, y: 68, tone: "primary" },
-              { label: "Atual", x: 48, y: 52, tone: "warning" },
-              { label: "Destino", x: 76, y: 35, tone: "success" },
-            ]}
-          />
-          <div className="mt-3 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">ID da carga</span>
-              <span className="px-2 py-0.5 rounded-md bg-primary/15 text-primary text-[10px] font-medium border border-primary/30">
-                {demoMode ? "Em transito" : "Sem carga"}
-              </span>
-            </div>
-            <div className="flex items-center gap-1 mt-1 font-medium">
-              {demoMode ? "#170845-25-800NYK" : "Nenhuma carga real cadastrada"}
-              {demoMode && <ExternalLink className="w-3 h-3 text-muted-foreground" />}
-            </div>
-          </div>
-          <div className="mt-4 pt-4 border-t border-border">
-            <div className="text-xs text-muted-foreground mb-2">Motorista</div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-semibold">
-                M
-              </div>
-              <div className="flex-1">
-                <div className="text-sm font-medium">
-                  {demoMode ? "Marcos Lima" : "Sem motorista"}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {demoMode ? "Nery Express" : "Aguardando cadastro"}
-                </div>
-              </div>
-              <button
-                onClick={() => toast.info("Conversa do motorista aberta.")}
-                className="w-7 h-7 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:bg-muted"
-              >
-                <MessageCircle className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => toast.info("Acionamento telefonico registrado.")}
-                className="w-7 h-7 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:bg-muted"
-              >
-                <Phone className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
 
-      <div className="bg-card border border-border rounded-lg p-5">
+      {/* Delivery stats chart */}
+      <div className="bg-card border border-border rounded-xl p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="font-semibold">Estatisticas de Entregas</h3>
+            <h3 className="font-semibold">Estatísticas de Entregas</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               Performance de entregas e status mensal.
             </p>
@@ -365,7 +308,8 @@ function DashboardPage() {
         </div>
       </div>
 
-      <div className="bg-card border border-border rounded-lg p-5">
+      {/* Deliveries table */}
+      <div className="bg-card border border-border rounded-xl p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
         <div className="flex items-center gap-3 mb-4 flex-wrap">
           <input
             value={query}
@@ -390,8 +334,8 @@ function DashboardPage() {
             onClick={() =>
               toast.info(
                 demoMode
-                  ? "Carga demonstrativa pronta para cadastro real."
-                  : "Conecte o cadastro de cargas reais para adicionar.",
+                  ? "Cargas demonstrativas. Desligue o modo DEMO para cadastrar uma carga real."
+                  : "Cadastre uma nova carga em Logística e Distribuição.",
               )
             }
             className="h-9 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium"
@@ -411,7 +355,7 @@ function DashboardPage() {
               <tr className="text-left text-xs text-muted-foreground border-b border-border">
                 <th className="font-medium py-3 pl-2">#</th>
                 <th className="font-medium py-3">ID da Carga</th>
-                <th className="font-medium py-3">Expedicao</th>
+                <th className="font-medium py-3">Expedição</th>
                 <th className="font-medium py-3">Categoria</th>
                 <th className="font-medium py-3">Motorista</th>
                 <th className="font-medium py-3">Data</th>
@@ -451,6 +395,21 @@ function DashboardPage() {
               )}
             </tbody>
           </table>
+        </div>
+        {/* Phone/Chat row helpers — quick driver actions */}
+        <div className="mt-4 flex gap-2 text-xs text-muted-foreground">
+          <button
+            onClick={() => toast.info("Conversa com motorista aberta.")}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border hover:bg-muted"
+          >
+            <MessageCircle className="w-3.5 h-3.5" /> Chat
+          </button>
+          <button
+            onClick={() => toast.info("Acionamento telefônico registrado.")}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border hover:bg-muted"
+          >
+            <Phone className="w-3.5 h-3.5" /> Ligar
+          </button>
         </div>
       </div>
     </div>
