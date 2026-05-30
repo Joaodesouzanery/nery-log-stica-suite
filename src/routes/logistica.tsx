@@ -32,11 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { TrackingMap, useTrackingData } from "@/components/tracking-map";
-import {
-  PeriodPicker,
-  defaultPeriod,
-  type PeriodValue,
-} from "@/components/period-picker";
+import { PeriodPicker, defaultPeriod, type PeriodValue } from "@/components/period-picker";
 
 export const Route = createFileRoute("/logistica")({
   head: () => ({
@@ -200,8 +196,7 @@ function LogisticaPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 overflow-x-auto border-b border-border -mb-px">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         {tabs.map((t) => {
           const active = tab === t.id;
           return (
@@ -209,14 +204,16 @@ function LogisticaPage() {
               key={t.id}
               onClick={() => setTab(t.id)}
               className={cn(
-                "inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap",
+                "min-h-16 rounded-lg border p-3 text-left text-sm font-medium transition-colors",
                 active
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-border",
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground",
               )}
             >
-              <t.icon className="w-3.5 h-3.5" />
-              {t.label}
+              <span className="flex items-center gap-2">
+                <t.icon className="h-4 w-4 shrink-0 text-primary" />
+                <span className="truncate">{t.label}</span>
+              </span>
             </button>
           );
         })}
@@ -239,15 +236,35 @@ function OverviewTab() {
       />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <OverviewCard label="Cargas totais" value={loading ? "—" : String(stats.total)} />
-        <OverviewCard label="Em trânsito" value={loading ? "—" : String(stats.trans)} tone="text-primary" />
-        <OverviewCard label="Entregues" value={loading ? "—" : String(stats.entregues)} tone="text-success" />
-        <OverviewCard label="Atrasadas" value={loading ? "—" : String(stats.atrasadas)} tone="text-destructive" />
+        <OverviewCard
+          label="Em trânsito"
+          value={loading ? "—" : String(stats.trans)}
+          tone="text-primary"
+        />
+        <OverviewCard
+          label="Entregues"
+          value={loading ? "—" : String(stats.entregues)}
+          tone="text-success"
+        />
+        <OverviewCard
+          label="Atrasadas"
+          value={loading ? "—" : String(stats.atrasadas)}
+          tone="text-destructive"
+        />
       </div>
     </div>
   );
 }
 
-function OverviewCard({ label, value, tone = "text-foreground" }: { label: string; value: string; tone?: string }) {
+function OverviewCard({
+  label,
+  value,
+  tone = "text-foreground",
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+}) {
   return (
     <div className="rounded-xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
       <div className="text-xs text-muted-foreground">{label}</div>
@@ -272,7 +289,7 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
   });
 
   const records = useMemo<OperationRecord[]>(
-    () => (demoMode ? [] : query.data ?? []),
+    () => (demoMode ? [] : (query.data ?? [])),
     [demoMode, query.data],
   );
 
@@ -417,7 +434,8 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
                       <button
                         onClick={() => {
                           if (demoMode) return toast.info("Dados demo não podem ser excluídos.");
-                          if (window.confirm("Excluir este registro?")) deleteMutation.mutate(rec.id);
+                          if (window.confirm("Excluir este registro?"))
+                            deleteMutation.mutate(rec.id);
                         }}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-destructive hover:bg-muted"
                         aria-label="Excluir"
@@ -456,9 +474,7 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
                   type={f.type ?? "text"}
                   step={f.type === "number" ? "any" : undefined}
                   value={payload[f.key] ?? ""}
-                  onChange={(e) =>
-                    setPayload((cur) => ({ ...cur, [f.key]: e.target.value }))
-                  }
+                  onChange={(e) => setPayload((cur) => ({ ...cur, [f.key]: e.target.value }))}
                   className="h-10 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
                 />
               </label>

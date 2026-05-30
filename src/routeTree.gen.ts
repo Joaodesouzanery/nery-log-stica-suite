@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LogisticaRouteImport } from './routes/logistica'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as CampoRouteImport } from './routes/campo'
 import { Route as IndexRouteImport } from './routes/index'
 
 const LogisticaRoute = LogisticaRouteImport.update({
@@ -23,6 +24,11 @@ const FinanceiroRoute = FinanceiroRouteImport.update({
   path: '/financeiro',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CampoRoute = CampoRouteImport.update({
+  id: '/campo',
+  path: '/campo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,30 +37,34 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/campo': typeof CampoRoute
   '/financeiro': typeof FinanceiroRoute
   '/logistica': typeof LogisticaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/campo': typeof CampoRoute
   '/financeiro': typeof FinanceiroRoute
   '/logistica': typeof LogisticaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/campo': typeof CampoRoute
   '/financeiro': typeof FinanceiroRoute
   '/logistica': typeof LogisticaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/financeiro' | '/logistica'
+  fullPaths: '/' | '/campo' | '/financeiro' | '/logistica'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/financeiro' | '/logistica'
-  id: '__root__' | '/' | '/financeiro' | '/logistica'
+  to: '/' | '/campo' | '/financeiro' | '/logistica'
+  id: '__root__' | '/' | '/campo' | '/financeiro' | '/logistica'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CampoRoute: typeof CampoRoute
   FinanceiroRoute: typeof FinanceiroRoute
   LogisticaRoute: typeof LogisticaRoute
 }
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FinanceiroRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/campo': {
+      id: '/campo'
+      path: '/campo'
+      fullPath: '/campo'
+      preLoaderRoute: typeof CampoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -87,9 +104,20 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CampoRoute: CampoRoute,
   FinanceiroRoute: FinanceiroRoute,
   LogisticaRoute: LogisticaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

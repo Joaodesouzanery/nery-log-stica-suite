@@ -4,6 +4,7 @@ import {
   Wallet,
   Truck,
   Package,
+  Sprout,
   HelpCircle,
   Settings,
   Moon,
@@ -20,6 +21,7 @@ const generalItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Logística e Distribuição", url: "/logistica", icon: Truck },
   { title: "Financeiro", url: "/financeiro", icon: Wallet },
+  { title: "Campo", url: "/campo", icon: Sprout },
 ];
 
 const supportItems = [
@@ -160,7 +162,11 @@ export function AppSidebar() {
             collapsed && "justify-center px-0",
           )}
         >
-          {theme === "dark" ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
+          {theme === "dark" ? (
+            <Sun className="w-[18px] h-[18px]" />
+          ) : (
+            <Moon className="w-[18px] h-[18px]" />
+          )}
           {!collapsed && <span>{theme === "dark" ? "Modo Claro" : "Modo Escuro"}</span>}
         </button>
 

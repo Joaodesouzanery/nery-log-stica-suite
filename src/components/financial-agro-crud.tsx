@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Banknote,
+  BellRing,
   Boxes,
   Calculator,
+  CalendarDays,
+  CheckCircle2,
   ClipboardList,
   Edit3,
   FileSignature,
@@ -24,7 +27,7 @@ import {
   deleteFinancialRecord,
   FinancialRecord,
   isSupabaseConfigured,
-  listAllFinancialRecords,
+  listFinancialRecords,
   updateFinancialRecord,
 } from "@/lib/supabase-financial";
 import { useDemoMode } from "@/hooks/use-demo-mode";
@@ -64,7 +67,7 @@ const financialModules: ModuleConfig[] = [
     description: "Registro de entradas e saidas adaptado ao produtor.",
     icon: Banknote,
     fields: [
-      { key: "descricao", label: "Descrição" },
+      { key: "descricao", label: "Descricao" },
       { key: "tipo", label: "Tipo" },
       { key: "categoria", label: "Categoria" },
       { key: "valor", label: "Valor", type: "number" },
@@ -75,20 +78,20 @@ const financialModules: ModuleConfig[] = [
     id: "custos",
     label: "Custos por Unidade",
     shortLabel: "Custos",
-    description: "Cálculo automático do custo de producao por dúzia, saca ou kg.",
+    description: "Calculo automatico do custo de producao por duzia, saca ou kg.",
     icon: Calculator,
     fields: [
       { key: "produto", label: "Produto" },
       { key: "unidade", label: "Unidade" },
       { key: "custo_total", label: "Custo total", type: "number" },
       { key: "quantidade", label: "Quantidade", type: "number" },
-      { key: "preço_venda", label: "Preço venda", type: "number" },
+      { key: "preco_venda", label: "Preco venda", type: "number" },
     ],
   },
   {
-    id: "inadimplência",
-    label: "Controle de Inadimplência",
-    shortLabel: "Inadimplência",
+    id: "inadimplencia",
+    label: "Controle de Inadimplencia",
+    shortLabel: "Inadimplencia",
     description: "Alertas de pagamentos pendentes de clientes.",
     icon: AlertTriangle,
     fields: [
@@ -96,11 +99,14 @@ const financialModules: ModuleConfig[] = [
       { key: "valor", label: "Valor", type: "number" },
       { key: "vencimento", label: "Vencimento", type: "date" },
       { key: "status", label: "Status" },
+      { key: "alerta_dias", label: "Alerta dias", type: "number" },
+      { key: "etapa_regua", label: "Etapa da regua" },
+      { key: "canal", label: "Canal" },
     ],
   },
   {
     id: "estoque",
-    label: "Gestão de Estoque de Produtos Acabados",
+    label: "Gestao de Estoque de Produtos Acabados",
     shortLabel: "Estoque",
     description: "Produtos prontos para venda imediata, reservas e validade.",
     icon: Boxes,
@@ -114,35 +120,35 @@ const financialModules: ModuleConfig[] = [
   },
   {
     id: "equilibrio",
-    label: "Cálculo de Ponto de Equilíbrio",
-    shortLabel: "Equilíbrio",
+    label: "Calculo de Ponto de Equilibrio",
+    shortLabel: "Equilibrio",
     description: "Quanto vender para cobrir os custos.",
     icon: Scale,
     fields: [
       { key: "produto", label: "Produto" },
-      { key: "preço_venda", label: "Preço venda", type: "number" },
-      { key: "custo_variável", label: "Custo variável", type: "number" },
+      { key: "preco_venda", label: "Preco venda", type: "number" },
+      { key: "custo_variavel", label: "Custo variavel", type: "number" },
       { key: "custo_fixo", label: "Custo fixo", type: "number" },
     ],
   },
   {
     id: "compras",
-    label: "Gestão de Compras",
+    label: "Gestao de Compras",
     shortLabel: "Compras",
     description: "Lista baseada na necessidade de insumos.",
     icon: ShoppingCart,
     fields: [
       { key: "insumo", label: "Insumo" },
       { key: "estoque_atual", label: "Estoque atual", type: "number" },
-      { key: "estoque_mínimo", label: "Estoque mínimo", type: "number" },
+      { key: "estoque_minimo", label: "Estoque minimo", type: "number" },
       { key: "consumo_semanal", label: "Consumo semanal", type: "number" },
       { key: "fornecedor", label: "Fornecedor" },
     ],
   },
   {
     id: "credito",
-    label: "Controle de Crédito Rural",
-    shortLabel: "Crédito",
+    label: "Controle de Credito Rural",
+    shortLabel: "Credito",
     description: "Acompanhamento de parcelas de financiamentos.",
     icon: Landmark,
     fields: [
@@ -154,17 +160,17 @@ const financialModules: ModuleConfig[] = [
     ],
   },
   {
-    id: "preços",
-    label: "Tabela de Preços Dinamica",
-    shortLabel: "Preços",
-    description: "Preços para atacado, varejo e assinaturas.",
+    id: "precos",
+    label: "Tabela de Precos Dinamica",
+    shortLabel: "Precos",
+    description: "Precos para atacado, varejo e assinaturas.",
     icon: Tags,
     fields: [
       { key: "produto", label: "Produto" },
       { key: "varejo", label: "Varejo", type: "number" },
       { key: "atacado", label: "Atacado", type: "number" },
       { key: "assinatura", label: "Assinatura", type: "number" },
-      { key: "promocao", label: "Promoção" },
+      { key: "promocao", label: "Promocao" },
     ],
   },
   {
@@ -174,7 +180,7 @@ const financialModules: ModuleConfig[] = [
     description: "Real x planejado por talhao e por safra.",
     icon: MapPin,
     fields: [
-      { key: "talhao", label: "Talhão" },
+      { key: "talhao", label: "Talhao" },
       { key: "safra", label: "Safra" },
       { key: "real", label: "Real", type: "number" },
       { key: "planejado", label: "Planejado", type: "number" },
@@ -182,7 +188,7 @@ const financialModules: ModuleConfig[] = [
   },
   {
     id: "safra",
-    label: "Orçamento de Safra",
+    label: "Orcamento de Safra",
     shortLabel: "Safra",
     description: "Insumos, mao de obra, maquinario e curva de desembolso.",
     icon: ClipboardList,
@@ -200,8 +206,8 @@ const financialModules: ModuleConfig[] = [
     description: "ROI por talhao, hibrido e variedade.",
     icon: Sprout,
     fields: [
-      { key: "talhao", label: "Talhão" },
-      { key: "hibrido", label: "Híbrido" },
+      { key: "talhao", label: "Talhao" },
+      { key: "hibrido", label: "Hibrido" },
       { key: "receita", label: "Receita", type: "number" },
       { key: "custo", label: "Custo", type: "number" },
     ],
@@ -210,20 +216,20 @@ const financialModules: ModuleConfig[] = [
     id: "arrendamento",
     label: "Controle de Arrendamento",
     shortLabel: "Arrendamento",
-    description: "Custo por área, vencimentos e histórico de reajustes.",
+    description: "Custo por area, vencimentos e historico de reajustes.",
     icon: FileText,
     fields: [
       { key: "contrato", label: "Contrato" },
-      { key: "área", label: "Area ha", type: "number" },
+      { key: "area", label: "Area ha", type: "number" },
       { key: "valor_ha", label: "R$/ha", type: "number" },
       { key: "vencimento", label: "Vencimento", type: "date" },
     ],
   },
   {
     id: "contratos",
-    label: "Gestão de Contratos",
+    label: "Gestao de Contratos",
     shortLabel: "Contratos",
-    description: "Compra de insumos, venda de grãos e fixacoes.",
+    description: "Compra de insumos, venda de graos e fixacoes.",
     icon: FileSignature,
     fields: [
       { key: "contrato", label: "Contrato" },
@@ -261,31 +267,37 @@ const demoRecords: RecordsByModule = {
   custos: [
     record("custos", "1", {
       produto: "Ovos caipira",
-      unidade: "dúzia",
+      unidade: "duzia",
       custo_total: "4820",
       quantidade: "1000",
-      preço_venda: "9.90",
+      preco_venda: "9.90",
     }),
     record("custos", "2", {
       produto: "Mel",
       unidade: "kg",
       custo_total: "3100",
       quantidade: "220",
-      preço_venda: "32",
+      preco_venda: "32",
     }),
   ],
-  inadimplência: [
-    record("inadimplência", "1", {
+  inadimplencia: [
+    record("inadimplencia", "1", {
       cliente: "Mercado Central",
       valor: "3200",
       vencimento: "2026-05-20",
       status: "pendente",
+      alerta_dias: "3",
+      etapa_regua: "D+7",
+      canal: "WhatsApp",
     }),
-    record("inadimplência", "2", {
+    record("inadimplencia", "2", {
       cliente: "Restaurante Aurora",
       valor: "5800",
       vencimento: "2026-06-02",
       status: "a vencer",
+      alerta_dias: "5",
+      etapa_regua: "D-3",
+      canal: "E-mail",
     }),
   ],
   estoque: [
@@ -307,8 +319,8 @@ const demoRecords: RecordsByModule = {
   equilibrio: [
     record("equilibrio", "1", {
       produto: "Ovos caipira",
-      preço_venda: "9.90",
-      custo_variável: "4.82",
+      preco_venda: "9.90",
+      custo_variavel: "4.82",
       custo_fixo: "1200",
     }),
   ],
@@ -316,14 +328,14 @@ const demoRecords: RecordsByModule = {
     record("compras", "1", {
       insumo: "Racao inicial",
       estoque_atual: "420",
-      estoque_mínimo: "800",
+      estoque_minimo: "800",
       consumo_semanal: "210",
       fornecedor: "Agro Sul",
     }),
     record("compras", "2", {
       insumo: "Caixas kraft",
       estoque_atual: "180",
-      estoque_mínimo: "300",
+      estoque_minimo: "300",
       consumo_semanal: "90",
       fornecedor: "Embalagens Norte",
     }),
@@ -337,8 +349,8 @@ const demoRecords: RecordsByModule = {
       vencimento: "2026-06-15",
     }),
   ],
-  preços: [
-    record("preços", "1", {
+  precos: [
+    record("precos", "1", {
       produto: "Ovos caipira",
       varejo: "9.90",
       atacado: "8.40",
@@ -348,7 +360,7 @@ const demoRecords: RecordsByModule = {
   ],
   hectare: [
     record("hectare", "1", {
-      talhao: "Talhão A",
+      talhao: "Talhao A",
       safra: "2025/26",
       real: "3420",
       planejado: "3200",
@@ -364,7 +376,7 @@ const demoRecords: RecordsByModule = {
   ],
   roi: [
     record("roi", "1", {
-      talhao: "Talhão B",
+      talhao: "Talhao B",
       hibrido: "Pioneer P3380",
       receita: "412000",
       custo: "280000",
@@ -373,7 +385,7 @@ const demoRecords: RecordsByModule = {
   arrendamento: [
     record("arrendamento", "1", {
       contrato: "Fazenda Vale Verde",
-      área: "120",
+      area: "120",
       valor_ha: "1850",
       vencimento: "2026-09-30",
     }),
@@ -440,7 +452,7 @@ function moduleSummary(moduleId: string, records: FinancialRecord[]) {
         tone: "info",
       };
     }
-    case "inadimplência": {
+    case "inadimplencia": {
       const today = new Date();
       const overdue = records.filter((r) => {
         const due = dateValue(r.payload.vencimento);
@@ -461,13 +473,13 @@ function moduleSummary(moduleId: string, records: FinancialRecord[]) {
       );
       return {
         headline: available.toLocaleString("pt-BR"),
-        caption: "unidades disponíveis",
+        caption: "unidades disponiveis",
         tone: "success",
       };
     }
     case "equilibrio": {
       const first = records[0]?.payload;
-      const margin = first ? num(first.preço_venda) - num(first.custo_variável) : 0;
+      const margin = first ? num(first.preco_venda) - num(first.custo_variavel) : 0;
       const point = margin > 0 && first ? Math.ceil(num(first.custo_fixo) / margin) : 0;
       return {
         headline: point.toLocaleString("pt-BR"),
@@ -477,7 +489,7 @@ function moduleSummary(moduleId: string, records: FinancialRecord[]) {
     }
     case "compras": {
       const urgent = records.filter(
-        (r) => num(r.payload.estoque_atual) < num(r.payload.estoque_mínimo),
+        (r) => num(r.payload.estoque_atual) < num(r.payload.estoque_minimo),
       );
       return {
         headline: String(urgent.length),
@@ -487,13 +499,13 @@ function moduleSummary(moduleId: string, records: FinancialRecord[]) {
     }
     case "credito": {
       const due = records.reduce((sum, r) => sum + num(r.payload.parcela), 0);
-      return { headline: formatMoney(due), caption: "próximas parcelas", tone: "warning" };
+      return { headline: formatMoney(due), caption: "proximas parcelas", tone: "warning" };
     }
-    case "preços": {
+    case "precos": {
       const avg = records.length
         ? records.reduce((sum, r) => sum + num(r.payload.varejo), 0) / records.length
         : 0;
-      return { headline: formatMoney(avg), caption: "preço médio varejo", tone: "info" };
+      return { headline: formatMoney(avg), caption: "preco medio varejo", tone: "info" };
     }
     default:
       return {
@@ -508,7 +520,7 @@ function buildDashboard(recordsByModule: RecordsByModule) {
   const fluxo = recordsByModule.fluxo ?? [];
   const estoque = recordsByModule.estoque ?? [];
   const compras = recordsByModule.compras ?? [];
-  const inadimplência = recordsByModule.inadimplência ?? [];
+  const inadimplencia = recordsByModule.inadimplencia ?? [];
   const credito = recordsByModule.credito ?? [];
 
   const entradas = fluxo
@@ -522,9 +534,9 @@ function buildDashboard(recordsByModule: RecordsByModule) {
     0,
   );
   const comprasPendentes = compras.filter(
-    (r) => num(r.payload.estoque_atual) < num(r.payload.estoque_mínimo),
+    (r) => num(r.payload.estoque_atual) < num(r.payload.estoque_minimo),
   ).length;
-  const vencidos = inadimplência.filter((r) => {
+  const vencidos = inadimplencia.filter((r) => {
     const due = dateValue(r.payload.vencimento);
     return due
       ? due < new Date() && !String(r.payload.status).toLowerCase().includes("pago")
@@ -538,11 +550,11 @@ function buildDashboard(recordsByModule: RecordsByModule) {
     saldo: entradas - saidas,
     estoquePronto,
     comprasPendentes,
-    inadimplência: vencidos.reduce((sum, r) => sum + num(r.payload.valor), 0),
+    inadimplencia: vencidos.reduce((sum, r) => sum + num(r.payload.valor), 0),
     parcelas,
     chart: [
       { label: "Entradas", valor: entradas },
-      { label: "Saídas", valor: saidas },
+      { label: "Saidas", valor: saidas },
       { label: "Inadimpl.", valor: vencidos.reduce((sum, r) => sum + num(r.payload.valor), 0) },
       { label: "Parcelas", valor: parcelas },
     ],
@@ -551,105 +563,64 @@ function buildDashboard(recordsByModule: RecordsByModule) {
 
 export function FinancialAgroCrud() {
   const { demoMode } = useDemoMode();
-  const allQuery = useQuery({
-    queryKey: ["financial-records-all"],
-    queryFn: listAllFinancialRecords,
-    enabled: !demoMode,
-    staleTime: 30_000,
-    refetchOnWindowFocus: false,
+  const queryResults = useQueries({
+    queries: financialModules.map((module) => ({
+      queryKey: ["financial-records", module.id],
+      queryFn: () => listFinancialRecords(module.id),
+      enabled: !demoMode,
+    })),
   });
 
-  const recordsByModule = useMemo<RecordsByModule>(() => {
+  const recordsByModule = useMemo(() => {
     if (demoMode) return demoRecords;
-    const grouped: RecordsByModule = Object.fromEntries(
-      financialModules.map((m) => [m.id, [] as FinancialRecord[]]),
-    );
-    for (const rec of allQuery.data ?? []) {
-      if (grouped[rec.module]) grouped[rec.module].push(rec);
-    }
-    return grouped;
-  }, [demoMode, allQuery.data]);
+    return Object.fromEntries(
+      financialModules.map((module, index) => [module.id, queryResults[index].data ?? []]),
+    ) as RecordsByModule;
+  }, [demoMode, queryResults]);
 
   const dashboard = useMemo(() => buildDashboard(recordsByModule), [recordsByModule]);
-  const loading = !demoMode && allQuery.isLoading;
+  const loading = queryResults.some((query) => query.isLoading);
 
   return (
     <div className="space-y-6">
       {!demoMode && !isSupabaseConfigured && (
-        <div className="rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm text-warning-foreground">
+        <div className="rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm text-warning-foreground">
           Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para carregar e salvar dados reais no
           Supabase.
         </div>
       )}
 
-      {loading ? (
-        <FinancialSkeleton />
-      ) : (
-        <>
-          <FinancialDashboard dashboard={dashboard} demoMode={demoMode} loading={loading} />
+      <FinancialDashboard dashboard={dashboard} demoMode={demoMode} loading={loading} />
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-            {financialModules.map((module) => {
-              const summary = moduleSummary(module.id, recordsByModule[module.id] ?? []);
-              return (
-                <a
-                  key={module.id}
-                  href={`#${module.id}`}
-                  className="rounded-xl border border-border bg-card p-3.5 text-sm shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-colors hover:bg-muted/50"
-                >
-                  <div className="flex items-center gap-2 text-[12px] font-medium text-muted-foreground">
-                    <module.icon className="h-3.5 w-3.5 text-primary" />
-                    {module.shortLabel}
-                  </div>
-                  <div className="mt-2 text-base font-semibold tracking-tight text-foreground">
-                    {summary.headline}
-                  </div>
-                  <div className="text-[11px] text-muted-foreground truncate">{summary.caption}</div>
-                </a>
-              );
-            })}
-          </div>
-
-          <div className="grid gap-5">
-            {financialModules.map((module) => (
-              <ModuleSection
-                key={module.id}
-                module={module}
-                demoMode={demoMode}
-                records={recordsByModule[module.id] ?? []}
-              />
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function FinancialSkeleton() {
-  return (
-    <div className="space-y-6 animate-pulse">
-      <div className="rounded-xl border border-border bg-card p-5">
-        <div className="h-5 w-48 rounded bg-muted" />
-        <div className="mt-2 h-3 w-72 rounded bg-muted/70" />
-        <div className="mt-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-border bg-background/60 p-3">
-              <div className="h-3 w-16 rounded bg-muted" />
-              <div className="mt-2 h-5 w-24 rounded bg-muted" />
-            </div>
-          ))}
-        </div>
-        <div className="mt-5 h-56 rounded-xl bg-muted/60" />
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+        {financialModules.map((module) => {
+          const summary = moduleSummary(module.id, recordsByModule[module.id] ?? []);
+          return (
+            <a
+              key={module.id}
+              href={`#${module.id}`}
+              className="rounded-lg border border-border bg-card p-3 text-sm hover:bg-muted/60"
+            >
+              <div className="flex items-center gap-2 font-medium">
+                <module.icon className="h-4 w-4 text-primary" />
+                {module.shortLabel}
+              </div>
+              <div className="mt-2 text-lg font-semibold">{summary.headline}</div>
+              <div className="text-xs text-muted-foreground">{summary.caption}</div>
+            </a>
+          );
+        })}
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-        {Array.from({ length: 7 }).map((_, i) => (
-          <div key={i} className="h-20 rounded-xl border border-border bg-card" />
-        ))}
-      </div>
+
       <div className="grid gap-5">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-48 rounded-xl border border-border bg-card" />
+        {financialModules.map((module) => (
+          <ModuleSection
+            key={module.id}
+            module={module}
+            demoMode={demoMode}
+            records={recordsByModule[module.id] ?? []}
+            costRecords={recordsByModule.custos ?? []}
+          />
         ))}
       </div>
     </div>
@@ -666,7 +637,7 @@ function FinancialDashboard({
   loading: boolean;
 }) {
   return (
-    <section className="rounded-xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+    <section className="rounded-lg border border-border bg-card p-5">
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold tracking-tight">Dashboard Financeiro</h2>
@@ -688,11 +659,11 @@ function FinancialDashboard({
           tone={dashboard.saldo >= 0 ? "success" : "danger"}
         />
         <DashKpi label="Entradas" value={formatMoney(dashboard.entradas)} tone="success" />
-        <DashKpi label="Saídas" value={formatMoney(dashboard.saidas)} tone="danger" />
+        <DashKpi label="Saidas" value={formatMoney(dashboard.saidas)} tone="danger" />
         <DashKpi
-          label="Inadimplência"
-          value={formatMoney(dashboard.inadimplência)}
-          tone={dashboard.inadimplência ? "warning" : "success"}
+          label="Inadimplencia"
+          value={formatMoney(dashboard.inadimplencia)}
+          tone={dashboard.inadimplencia ? "warning" : "success"}
         />
         <DashKpi
           label="Estoque pronto"
@@ -755,7 +726,7 @@ function DashKpi({
     info: "text-primary",
   };
   return (
-    <div className="rounded-xl border border-border bg-background/60 p-3">
+    <div className="rounded-lg border border-border bg-background/60 p-3">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className={cn("mt-1 text-lg font-semibold", classes[tone])}>{value}</div>
     </div>
@@ -766,15 +737,21 @@ function ModuleSection({
   module,
   demoMode,
   records,
+  costRecords,
 }: {
   module: ModuleConfig;
   demoMode: boolean;
   records: FinancialRecord[];
+  costRecords?: FinancialRecord[];
 }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<FinancialRecord | null>(null);
   const [payload, setPayload] = useState<Record<string, string>>(emptyPayload(module));
+  const costsModule = financialModules.find((item) => item.id === "custos")!;
+  const [costOpen, setCostOpen] = useState(false);
+  const [editingCost, setEditingCost] = useState<FinancialRecord | null>(null);
+  const [costPayload, setCostPayload] = useState<Record<string, string>>(emptyPayload(costsModule));
   const summary = moduleSummary(module.id, records);
 
   const createMutation = useMutation({
@@ -782,7 +759,7 @@ function ModuleSection({
     onSuccess: () => {
       toast.success("Registro adicionado.");
       setOpen(false);
-      void queryClient.invalidateQueries({ queryKey: ["financial-records-all"] });
+      void queryClient.invalidateQueries({ queryKey: ["financial-records", module.id] });
     },
     onError: (error) => toast.error(error.message),
   });
@@ -792,7 +769,7 @@ function ModuleSection({
     onSuccess: () => {
       toast.success("Registro atualizado.");
       setOpen(false);
-      void queryClient.invalidateQueries({ queryKey: ["financial-records-all"] });
+      void queryClient.invalidateQueries({ queryKey: ["financial-records", module.id] });
     },
     onError: (error) => toast.error(error.message),
   });
@@ -800,8 +777,37 @@ function ModuleSection({
   const deleteMutation = useMutation({
     mutationFn: deleteFinancialRecord,
     onSuccess: () => {
-      toast.success("Registro excluído.");
-      void queryClient.invalidateQueries({ queryKey: ["financial-records-all"] });
+      toast.success("Registro excluido.");
+      void queryClient.invalidateQueries({ queryKey: ["financial-records", module.id] });
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const createCostMutation = useMutation({
+    mutationFn: createFinancialRecord,
+    onSuccess: () => {
+      toast.success("Custo por unidade adicionado.");
+      setCostOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ["financial-records", "custos"] });
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const updateCostMutation = useMutation({
+    mutationFn: updateFinancialRecord,
+    onSuccess: () => {
+      toast.success("Custo por unidade atualizado.");
+      setCostOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ["financial-records", "custos"] });
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const deleteCostMutation = useMutation({
+    mutationFn: deleteFinancialRecord,
+    onSuccess: () => {
+      toast.success("Custo por unidade excluido.");
+      void queryClient.invalidateQueries({ queryKey: ["financial-records", "custos"] });
     },
     onError: (error) => toast.error(error.message),
   });
@@ -826,6 +832,26 @@ function ModuleSection({
     setOpen(true);
   };
 
+  const beginCostCreate = () => {
+    if (demoMode) {
+      toast.info("Desligue o modo DEMO para cadastrar dados reais.");
+      return;
+    }
+    setEditingCost(null);
+    setCostPayload(emptyPayload(costsModule));
+    setCostOpen(true);
+  };
+
+  const beginCostEdit = (recordToEdit: FinancialRecord) => {
+    if (demoMode) {
+      toast.info("Dados demo nao podem ser editados.");
+      return;
+    }
+    setEditingCost(recordToEdit);
+    setCostPayload({ ...emptyPayload(costsModule), ...recordToEdit.payload });
+    setCostOpen(true);
+  };
+
   const submit = () => {
     if (demoMode) return;
     if (editing) {
@@ -835,8 +861,17 @@ function ModuleSection({
     createMutation.mutate({ module: module.id, payload });
   };
 
+  const submitCost = () => {
+    if (demoMode) return;
+    if (editingCost) {
+      updateCostMutation.mutate({ id: editingCost.id, payload: costPayload });
+      return;
+    }
+    createCostMutation.mutate({ module: "custos", payload: costPayload });
+  };
+
   return (
-    <section id={module.id} className="scroll-mt-20 rounded-xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+    <section id={module.id} className="scroll-mt-20 rounded-lg border border-border bg-card p-5">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -861,24 +896,46 @@ function ModuleSection({
       </div>
 
       <div className="mb-4 grid gap-3 md:grid-cols-3">
-        <div className="rounded-xl border border-border bg-background/60 p-3">
+        <div className="rounded-lg border border-border bg-background/60 p-3">
           <div className="text-xs text-muted-foreground">Resumo calculado</div>
           <div className="mt-1 text-lg font-semibold">{summary.headline}</div>
           <div className="text-xs text-muted-foreground">{summary.caption}</div>
         </div>
-        <div className="rounded-xl border border-border bg-background/60 p-3">
+        <div className="rounded-lg border border-border bg-background/60 p-3">
           <div className="text-xs text-muted-foreground">Registros</div>
           <div className="mt-1 text-lg font-semibold">{records.length}</div>
           <div className="text-xs text-muted-foreground">
-            {demoMode ? "Somente leitura" : "Editável"}
+            {demoMode ? "Somente leitura" : "Editavel"}
           </div>
         </div>
-        <div className="rounded-xl border border-border bg-background/60 p-3">
+        <div className="rounded-lg border border-border bg-background/60 p-3">
           <div className="text-xs text-muted-foreground">Motor de regra</div>
           <div className="mt-1 text-lg font-semibold">Ativo</div>
-          <div className="text-xs text-muted-foreground">cálculo automático por módulo</div>
+          <div className="text-xs text-muted-foreground">calculo automatico por modulo</div>
         </div>
       </div>
+
+      {module.id === "fluxo" && (
+        <CashflowWorkspace
+          records={records}
+          costRecords={costRecords ?? []}
+          demoMode={demoMode}
+          onAddEntry={beginCreate}
+          onAddCost={beginCostCreate}
+          onEditCost={beginCostEdit}
+          onDeleteCost={(id) => {
+            if (demoMode) {
+              toast.info("Dados demo nao podem ser excluidos.");
+              return;
+            }
+            if (window.confirm("Excluir este custo por unidade?")) deleteCostMutation.mutate(id);
+          }}
+        />
+      )}
+
+      {module.id === "inadimplencia" && (
+        <DefaultingWorkspace records={records} demoMode={demoMode} onAdd={beginCreate} />
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -889,7 +946,7 @@ function ModuleSection({
                   {field.label}
                 </th>
               ))}
-              <th className="py-3 text-right font-medium">Ações</th>
+              <th className="py-3 text-right font-medium">Acoes</th>
             </tr>
           </thead>
           <tbody>
@@ -912,7 +969,7 @@ function ModuleSection({
                     <button
                       onClick={() => {
                         if (demoMode) {
-                          toast.info("Dados demo nao podem ser excluídos.");
+                          toast.info("Dados demo nao podem ser excluidos.");
                           return;
                         }
                         if (window.confirm("Excluir este registro?")) {
@@ -934,7 +991,7 @@ function ModuleSection({
                   colSpan={module.fields.length + 1}
                   className="py-10 text-center text-sm text-muted-foreground"
                 >
-                  Nenhum registro real cadastrado neste módulo.
+                  Nenhum registro real cadastrado neste modulo.
                 </td>
               </tr>
             )}
@@ -980,6 +1037,380 @@ function ModuleSection({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {module.id === "fluxo" && (
+        <Dialog open={costOpen} onOpenChange={setCostOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{editingCost ? "Editar custo" : "Adicionar custo"}</DialogTitle>
+              <DialogDescription>Custos por Unidade dentro do Fluxo de Caixa</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3">
+              {costsModule.fields.map((field) => (
+                <label key={field.key} className="grid gap-1.5 text-sm">
+                  <span className="text-muted-foreground">{field.label}</span>
+                  <input
+                    type={field.type ?? "text"}
+                    value={costPayload[field.key] ?? ""}
+                    onChange={(event) =>
+                      setCostPayload((current) => ({ ...current, [field.key]: event.target.value }))
+                    }
+                    className="h-10 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                  />
+                </label>
+              ))}
+            </div>
+            <DialogFooter>
+              <button
+                onClick={() => setCostOpen(false)}
+                className="h-9 rounded-lg border border-border px-3 text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={submitCost}
+                disabled={createCostMutation.isPending || updateCostMutation.isPending}
+                className="h-9 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground disabled:opacity-60"
+              >
+                Salvar
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </section>
   );
+}
+
+function CashflowWorkspace({
+  records,
+  costRecords,
+  demoMode,
+  onAddEntry,
+  onAddCost,
+  onEditCost,
+  onDeleteCost,
+}: {
+  records: FinancialRecord[];
+  costRecords: FinancialRecord[];
+  demoMode: boolean;
+  onAddEntry: () => void;
+  onAddCost: () => void;
+  onEditCost: (record: FinancialRecord) => void;
+  onDeleteCost: (id: string) => void;
+}) {
+  const entradas = records.filter((recordItem) =>
+    String(recordItem.payload.tipo).toLowerCase().includes("entrada"),
+  );
+  const saidas = records.filter((recordItem) =>
+    String(recordItem.payload.tipo).toLowerCase().includes("saida"),
+  );
+  const entradaTotal = entradas.reduce((sum, recordItem) => sum + num(recordItem.payload.valor), 0);
+  const saidaTotal = saidas.reduce((sum, recordItem) => sum + num(recordItem.payload.valor), 0);
+  const custoTotal = costRecords.reduce(
+    (sum, recordItem) => sum + num(recordItem.payload.custo_total),
+    0,
+  );
+  const margemMedia = costRecords.length
+    ? costRecords.reduce((sum, recordItem) => {
+        const unitCost =
+          num(recordItem.payload.custo_total) / Math.max(num(recordItem.payload.quantidade), 1);
+        return sum + (num(recordItem.payload.preco_venda) - unitCost);
+      }, 0) / costRecords.length
+    : 0;
+  const dreRows = [
+    ["Receita bruta", entradaTotal],
+    ["(-) Saidas operacionais", -saidaTotal],
+    ["(-) Custos de producao", -custoTotal],
+    ["(=) Resultado simplificado", entradaTotal - saidaTotal - custoTotal],
+  ];
+
+  return (
+    <div className="mb-5 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="rounded-lg border border-border bg-background/60 p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h4 className="font-semibold">Entradas, Saidas e Custos</h4>
+            <p className="text-xs text-muted-foreground">
+              Custos por Unidade agora vivem dentro do Fluxo de Caixa.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={onAddEntry}
+              className="h-8 rounded-md border border-border px-2 text-xs hover:bg-muted"
+            >
+              Entrada/Saida
+            </button>
+            <button
+              onClick={onAddCost}
+              className="h-8 rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground"
+            >
+              Custo
+            </button>
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-4">
+          <DashKpi label="Entradas" value={formatMoney(entradaTotal)} tone="success" />
+          <DashKpi label="Saidas" value={formatMoney(saidaTotal)} tone="danger" />
+          <DashKpi
+            label="Margem unitaria"
+            value={formatMoney(margemMedia)}
+            tone={margemMedia >= 0 ? "success" : "danger"}
+          />
+          <DashKpi label="Custos un." value={String(costRecords.length)} tone="info" />
+        </div>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                <th className="py-2 pr-3 font-medium">Produto</th>
+                <th className="py-2 pr-3 font-medium">Unidade</th>
+                <th className="py-2 pr-3 font-medium">Custo un.</th>
+                <th className="py-2 pr-3 font-medium">Venda</th>
+                <th className="py-2 pr-3 font-medium">Margem</th>
+                <th className="py-2 text-right font-medium">Acoes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {costRecords.map((recordItem) => {
+                const unitCost =
+                  num(recordItem.payload.custo_total) /
+                  Math.max(num(recordItem.payload.quantidade), 1);
+                const margin = num(recordItem.payload.preco_venda) - unitCost;
+                const marginPct = num(recordItem.payload.preco_venda)
+                  ? (margin / num(recordItem.payload.preco_venda)) * 100
+                  : 0;
+                return (
+                  <tr key={recordItem.id} className="border-b border-border last:border-0">
+                    <td className="py-2 pr-3 font-medium">{recordItem.payload.produto || "-"}</td>
+                    <td className="py-2 pr-3">{recordItem.payload.unidade || "-"}</td>
+                    <td className="py-2 pr-3">{formatMoney(unitCost)}</td>
+                    <td className="py-2 pr-3">
+                      {formatMoney(num(recordItem.payload.preco_venda))}
+                    </td>
+                    <td className="py-2 pr-3">
+                      <span
+                        className={cn(
+                          "rounded-md px-2 py-1 text-xs font-medium",
+                          margin >= 0
+                            ? "bg-success/15 text-success"
+                            : "bg-destructive/15 text-destructive",
+                        )}
+                      >
+                        {formatMoney(margin)} / {marginPct.toFixed(1)}%
+                      </span>
+                    </td>
+                    <td className="py-2">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => onEditCost(recordItem)}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border hover:bg-muted"
+                          aria-label="Editar custo"
+                        >
+                          <Edit3 className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => onDeleteCost(recordItem.id)}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-destructive hover:bg-muted"
+                          aria-label="Excluir custo"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {costRecords.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                    {demoMode ? "Sem custo demonstrativo." : "Cadastre custos por unidade aqui."}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-border bg-background/60 p-4">
+        <h4 className="font-semibold">DRE simplificada</h4>
+        <p className="text-xs text-muted-foreground">
+          Calculada pelos registros editaveis do Fluxo e de Custos.
+        </p>
+        <div className="mt-4 divide-y divide-border rounded-lg border border-border">
+          {dreRows.map(([label, value], index) => (
+            <div
+              key={label as string}
+              className="flex items-center justify-between gap-4 px-3 py-2 text-sm"
+            >
+              <span
+                className={index === dreRows.length - 1 ? "font-semibold" : "text-muted-foreground"}
+              >
+                {label}
+              </span>
+              <span
+                className={cn(
+                  "font-semibold",
+                  Number(value) >= 0 ? "text-success" : "text-destructive",
+                )}
+              >
+                {formatMoney(Number(value))}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4">
+          <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+            <span>Comparativo por produto</span>
+            <span>{costRecords.length} itens</span>
+          </div>
+          <div className="space-y-3">
+            {costRecords.slice(0, 5).map((recordItem) => {
+              const unitCost =
+                num(recordItem.payload.custo_total) /
+                Math.max(num(recordItem.payload.quantidade), 1);
+              const pct = num(recordItem.payload.preco_venda)
+                ? clampPercent(
+                    ((num(recordItem.payload.preco_venda) - unitCost) /
+                      num(recordItem.payload.preco_venda)) *
+                      100,
+                  )
+                : 0;
+              return (
+                <div key={recordItem.id}>
+                  <div className="flex justify-between text-xs">
+                    <span className="font-medium">{recordItem.payload.produto || "Produto"}</span>
+                    <span>{pct.toFixed(0)}%</span>
+                  </div>
+                  <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DefaultingWorkspace({
+  records,
+  demoMode,
+  onAdd,
+}: {
+  records: FinancialRecord[];
+  demoMode: boolean;
+  onAdd: () => void;
+}) {
+  const timeline = [...records].sort((a, b) =>
+    String(a.payload.vencimento ?? "").localeCompare(String(b.payload.vencimento ?? "")),
+  );
+  const steps = [
+    { day: "D-3", title: "Lembrete amigavel", channel: "WhatsApp + E-mail" },
+    { day: "D+1", title: "Aviso de atraso", channel: "WhatsApp" },
+    { day: "D+7", title: "Cobranca formal", channel: "E-mail + boleto" },
+    { day: "D+15", title: "Negativacao", channel: "Analise manual" },
+    { day: "D+30", title: "Protesto", channel: "Juridico" },
+  ];
+
+  return (
+    <div className="mb-5 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+      <div className="rounded-lg border border-border bg-background/60 p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h4 className="font-semibold">Cronograma visual</h4>
+            <p className="text-xs text-muted-foreground">
+              Vencimentos, atrasos e alertas configuraveis.
+            </p>
+          </div>
+          <button
+            onClick={onAdd}
+            className="h-8 rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground"
+          >
+            Novo titulo
+          </button>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {timeline.map((recordItem) => {
+            const due = dateValue(recordItem.payload.vencimento);
+            const late = due ? due < new Date() : false;
+            return (
+              <div key={recordItem.id} className="rounded-lg border border-border bg-card p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-medium">{recordItem.payload.cliente || "Cliente"}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {recordItem.payload.vencimento || "Sem vencimento"}
+                    </div>
+                  </div>
+                  <span
+                    className={cn(
+                      "rounded-md px-2 py-1 text-xs font-medium",
+                      late ? "bg-destructive/15 text-destructive" : "bg-primary/15 text-primary",
+                    )}
+                  >
+                    {late ? "Atrasado" : recordItem.payload.status || "A vencer"}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-center justify-between text-sm">
+                  <span className="font-semibold">
+                    {formatMoney(num(recordItem.payload.valor))}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    alerta {recordItem.payload.alerta_dias || "3"}d /{" "}
+                    {recordItem.payload.canal || "WhatsApp"}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+          {timeline.length === 0 && (
+            <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+              {demoMode
+                ? "Sem inadimplencia demonstrativa."
+                : "Cadastre titulos para ativar o cronograma."}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="rounded-lg border border-border bg-background/60 p-4">
+        <div className="flex items-center gap-2">
+          <BellRing className="h-4 w-4 text-primary" />
+          <h4 className="font-semibold">Regua de Cobranca</h4>
+        </div>
+        <div className="mt-4 space-y-3">
+          {steps.map((step, index) => (
+            <div key={step.day} className="flex gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-xs font-semibold">
+                {step.day}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  {step.title}
+                  {index < 3 ? (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                  ) : (
+                    <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground">{step.channel}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground">
+          Para alterar a regua por cliente, edite os campos Etapa da regua, Canal e Alerta dias na
+          tabela abaixo.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function clampPercent(value: number) {
+  return Math.min(Math.max(value, 0), 100);
 }
