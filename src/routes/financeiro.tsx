@@ -42,7 +42,7 @@ export const Route = createFileRoute("/financeiro")({
 type TabDef = {
   id: string;
   label: string;
-  render: () => JSX.Element;
+  render: () => React.ReactNode;
 };
 
 const tabs: TabDef[] = [
