@@ -13,6 +13,7 @@ import {
   FileSignature,
   FileText,
   Landmark,
+  LayoutDashboard,
   MapPin,
   Plus,
   Scale,
@@ -563,6 +564,8 @@ function buildDashboard(recordsByModule: RecordsByModule) {
 
 export function FinancialAgroCrud() {
   const { demoMode } = useDemoMode();
+  const [activeTab, setActiveTab] = useState<string>("visao-geral");
+
   const queryResults = useQueries({
     queries: financialModules.map((module) => ({
       queryKey: ["financial-records", module.id],
@@ -581,8 +584,18 @@ export function FinancialAgroCrud() {
   const dashboard = useMemo(() => buildDashboard(recordsByModule), [recordsByModule]);
   const loading = queryResults.some((query) => query.isLoading);
 
+  const tabs = useMemo(
+    () => [
+      { id: "visao-geral", label: "Visão Geral", icon: LayoutDashboard },
+      ...financialModules.map((m) => ({ id: m.id, label: m.shortLabel, icon: m.icon })),
+    ],
+    [],
+  );
+
+  const activeModule = financialModules.find((m) => m.id === activeTab);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {!demoMode && !isSupabaseConfigured && (
         <div className="rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm text-warning-foreground">
           Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para carregar e salvar dados reais no
@@ -590,42 +603,67 @@ export function FinancialAgroCrud() {
         </div>
       )}
 
-      <FinancialDashboard dashboard={dashboard} demoMode={demoMode} loading={loading} />
-
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-        {financialModules.map((module) => {
-          const summary = moduleSummary(module.id, recordsByModule[module.id] ?? []);
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7 xl:grid-cols-7">
+        {tabs.map((t) => {
+          const active = activeTab === t.id;
           return (
-            <a
-              key={module.id}
-              href={`#${module.id}`}
-              className="rounded-lg border border-border bg-card p-3 text-sm hover:bg-muted/60"
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={cn(
+                "min-h-16 rounded-xl border p-3 text-left text-sm font-medium transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
+                active
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+              )}
             >
-              <div className="flex items-center gap-2 font-medium">
-                <module.icon className="h-4 w-4 text-primary" />
-                {module.shortLabel}
-              </div>
-              <div className="mt-2 text-lg font-semibold">{summary.headline}</div>
-              <div className="text-xs text-muted-foreground">{summary.caption}</div>
-            </a>
+              <span className="flex items-center gap-2">
+                <t.icon className="h-4 w-4 shrink-0 text-primary" />
+                <span className="truncate">{t.label}</span>
+              </span>
+            </button>
           );
         })}
       </div>
 
-      <div className="grid gap-5">
-        {financialModules.map((module) => (
-          <ModuleSection
-            key={module.id}
-            module={module}
-            demoMode={demoMode}
-            records={recordsByModule[module.id] ?? []}
-            costRecords={recordsByModule.custos ?? []}
-          />
-        ))}
-      </div>
+      {activeTab === "visao-geral" && (
+        <>
+          <FinancialDashboard dashboard={dashboard} demoMode={demoMode} loading={loading} />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+            {financialModules.map((module) => {
+              const summary = moduleSummary(module.id, recordsByModule[module.id] ?? []);
+              return (
+                <button
+                  key={module.id}
+                  onClick={() => setActiveTab(module.id)}
+                  className="rounded-xl border border-border bg-card p-3 text-sm text-left hover:bg-muted/60 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+                >
+                  <div className="flex items-center gap-2 font-medium">
+                    <module.icon className="h-4 w-4 text-primary" />
+                    {module.shortLabel}
+                  </div>
+                  <div className="mt-2 text-lg font-semibold">{summary.headline}</div>
+                  <div className="text-xs text-muted-foreground">{summary.caption}</div>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {activeModule && (
+        <ModuleSection
+          key={activeModule.id}
+          module={activeModule}
+          demoMode={demoMode}
+          records={recordsByModule[activeModule.id] ?? []}
+          costRecords={recordsByModule.custos ?? []}
+        />
+      )}
     </div>
   );
 }
+
 
 function FinancialDashboard({
   dashboard,

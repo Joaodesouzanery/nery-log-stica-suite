@@ -8,6 +8,7 @@ import {
   CloudSun,
   Droplets,
   Edit3,
+  LayoutDashboard,
   Leaf,
   MapPinned,
   Microscope,
@@ -19,9 +20,10 @@ import {
   Trash2,
   Upload,
   Wheat,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { CartoMap } from "@/components/carto-map";
+import { CartoMap, type MapPoint, type MapRoute } from "@/components/carto-map";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import {
   createFieldRecord,
@@ -40,6 +42,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/campo")({
   head: () => ({
@@ -513,6 +516,9 @@ function queueOfflineDiary(payload: Record<string, string>) {
 
 function CampoPage() {
   const { demoMode } = useDemoMode();
+  const [activeTab, setActiveTab] = useState<string>("visao-geral");
+  const [selectedTalhaoId, setSelectedTalhaoId] = useState<string | null>(null);
+
   const queryResults = useQueries({
     queries: campoModules.map((module) => ({
       queryKey: ["field-records", module.id],
@@ -529,43 +535,74 @@ function CampoPage() {
   }, [demoMode, queryResults]);
 
   const talhoes = recordsByModule.areas ?? [];
-  const routes = talhoes
-    .map((item) => {
-      const points = parseRoute(item.payload.coordenadas);
-      if (!points.length) return null;
-      return {
-        id: item.id,
-        label: item.payload.talhao || "Talhao",
-        points,
-        status: item.payload.status,
-        description: item.payload.uso_solo,
-        tone: "success" as const,
-        meta: {
-          Cultura: item.payload.cultura,
-          Area: item.payload.area_ha ? `${item.payload.area_ha} ha` : undefined,
-        },
-      };
-    })
-    .filter((route): route is NonNullable<typeof route> => Boolean(route));
-  const pragaPoints = (recordsByModule.pragas ?? [])
-    .map((item) => {
-      const point = parseFocus(item.payload.gps);
-      if (!point) return null;
-      return {
-        id: item.id,
-        label: item.payload.ocorrencia || "Foco",
-        x: point.x,
-        y: point.y,
-        tone: item.payload.severidade === "Alta" ? ("danger" as const) : ("warning" as const),
-        status: item.payload.severidade,
-        description: item.payload.tratamento,
-      };
-    })
-    .filter((point): point is NonNullable<typeof point> => Boolean(point));
+  const routes: MapRoute[] = useMemo(
+    () =>
+      talhoes
+        .map((item) => {
+          const points = parseRoute(item.payload.coordenadas);
+          if (!points.length) return null;
+          return {
+            id: item.id,
+            label: item.payload.talhao || "Talhao",
+            points,
+            status: item.payload.status,
+            description: item.payload.uso_solo,
+            tone: "success" as const,
+            meta: {
+              Cultura: item.payload.cultura,
+              Area: item.payload.area_ha ? `${item.payload.area_ha} ha` : undefined,
+            },
+          };
+        })
+        .filter((route): route is NonNullable<typeof route> => Boolean(route)),
+    [talhoes],
+  );
+
+  const pragaPoints: MapPoint[] = useMemo(
+    () =>
+      (recordsByModule.pragas ?? [])
+        .map((item) => {
+          const point = parseFocus(item.payload.gps);
+          if (!point) return null;
+          return {
+            id: item.id,
+            label: item.payload.ocorrencia || "Foco",
+            x: point.x,
+            y: point.y,
+            tone: item.payload.severidade === "Alta" ? ("danger" as const) : ("warning" as const),
+            status: item.payload.severidade,
+            description: item.payload.tratamento,
+            meta: { Talhão: item.payload.talhao, Carência: item.payload.carencia },
+          };
+        })
+        .filter((point): point is NonNullable<typeof point> => Boolean(point)),
+    [recordsByModule.pragas],
+  );
 
   const hectares = talhoes.reduce((sum, item) => sum + num(item.payload.area_ha), 0);
   const alerts = [...(recordsByModule.pragas ?? []), ...(recordsByModule.meteorologia ?? [])]
     .length;
+
+  const selectedTalhao = talhoes.find((t) => t.id === selectedTalhaoId);
+  const talhaoPragas = selectedTalhao
+    ? (recordsByModule.pragas ?? []).filter(
+        (p) => p.payload.talhao === selectedTalhao.payload.talhao,
+      )
+    : [];
+  const talhaoInsumos = selectedTalhao
+    ? (recordsByModule.insumos ?? []).filter(
+        (p) => p.payload.talhao === selectedTalhao.payload.talhao,
+      )
+    : [];
+
+  const tabs = useMemo(
+    () => [
+      { id: "visao-geral", label: "Visão Geral", icon: LayoutDashboard },
+      ...campoModules.map((m) => ({ id: m.id, label: m.shortLabel, icon: m.icon })),
+    ],
+    [],
+  );
+  const activeModule = campoModules.find((m) => m.id === activeTab);
 
   return (
     <div className="px-8 py-6 max-w-[1600px] mx-auto">
@@ -573,7 +610,8 @@ function CampoPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Campo</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Talhoes, manejo, rastreabilidade, clima e planejamento agricola em uma tela operacional.
+            Talhões, manejo, rastreabilidade, clima e planejamento agrícola em uma tela
+            operacional.
           </p>
         </div>
         <div className="rounded-md border border-border px-3 py-1 text-xs text-muted-foreground">
@@ -581,75 +619,176 @@ function CampoPage() {
         </div>
       </div>
 
-      <div className="space-y-6">
-        {!demoMode && !isSupabaseConfigured && (
-          <div className="rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm text-warning-foreground">
-            Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para salvar dados reais no Campo.
-          </div>
-        )}
-
-        <section className="rounded-lg border border-border bg-card p-5">
-          <div className="grid gap-4 xl:grid-cols-[1fr_430px]">
-            <div>
-              <div className="grid gap-3 md:grid-cols-4">
-                <CampoKpi label="Talhoes" value={String(talhoes.length)} hint="areas cadastradas" />
-                <CampoKpi
-                  label="Area total"
-                  value={`${hectares.toLocaleString("pt-BR")} ha`}
-                  hint="mapeada"
-                />
-                <CampoKpi label="Alertas" value={String(alerts)} hint="campo e clima" />
-                <CampoKpi
-                  label="Lotes"
-                  value={String(recordsByModule.lotes?.length ?? 0)}
-                  hint="rastreaveis"
-                />
-              </div>
-              <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-                {campoModules.map((module) => {
-                  const summary = moduleSummary(module, recordsByModule[module.id] ?? []);
-                  return (
-                    <a
-                      key={module.id}
-                      href={`#${module.id}`}
-                      className="rounded-lg border border-border bg-background/60 p-3 text-sm transition hover:bg-muted/60"
-                    >
-                      <div className="flex items-center gap-2 font-medium">
-                        <module.icon className="h-4 w-4 text-primary" />
-                        <span className="truncate">{module.shortLabel}</span>
-                      </div>
-                      <div className="mt-2 text-lg font-semibold">{summary.headline}</div>
-                      <div className="text-xs text-muted-foreground">{summary.caption}</div>
-                    </a>
-                  );
-                })}
-              </div>
-            </div>
-            <CartoMap
-              variant="positron"
-              className="h-[380px]"
-              centerLabel="Mapa de talhoes"
-              routes={routes}
-              points={pragaPoints}
-              route={routes[0]?.points}
-            />
-          </div>
-        </section>
-
-        <div className="grid gap-5">
-          {campoModules.map((module) => (
-            <CampoModuleSection
-              key={module.id}
-              module={module}
-              demoMode={demoMode}
-              records={recordsByModule[module.id] ?? []}
-            />
-          ))}
+      {!demoMode && !isSupabaseConfigured && (
+        <div className="mb-5 rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm text-warning-foreground">
+          Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para salvar dados reais no Campo.
         </div>
+      )}
+
+      <div className="mb-5 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7 xl:grid-cols-9">
+        {tabs.map((t) => {
+          const active = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={cn(
+                "min-h-16 rounded-xl border p-3 text-left text-sm font-medium transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
+                active
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+              )}
+            >
+              <span className="flex items-center gap-2">
+                <t.icon className="h-4 w-4 shrink-0 text-primary" />
+                <span className="truncate">{t.label}</span>
+              </span>
+            </button>
+          );
+        })}
       </div>
+
+      {activeTab === "visao-geral" && (
+        <div className="space-y-5">
+          <section className="rounded-xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+            <div className="grid gap-4 xl:grid-cols-[1fr_430px]">
+              <div>
+                <div className="grid gap-3 md:grid-cols-4">
+                  <CampoKpi label="Talhões" value={String(talhoes.length)} hint="áreas cadastradas" />
+                  <CampoKpi
+                    label="Área total"
+                    value={`${hectares.toLocaleString("pt-BR")} ha`}
+                    hint="mapeada"
+                  />
+                  <CampoKpi label="Alertas" value={String(alerts)} hint="campo e clima" />
+                  <CampoKpi
+                    label="Lotes"
+                    value={String(recordsByModule.lotes?.length ?? 0)}
+                    hint="rastreáveis"
+                  />
+                </div>
+                <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                  {campoModules.map((module) => {
+                    const summary = moduleSummary(module, recordsByModule[module.id] ?? []);
+                    return (
+                      <button
+                        key={module.id}
+                        onClick={() => setActiveTab(module.id)}
+                        className="rounded-xl border border-border bg-background/60 p-3 text-sm text-left transition hover:bg-muted/60"
+                      >
+                        <div className="flex items-center gap-2 font-medium">
+                          <module.icon className="h-4 w-4 text-primary" />
+                          <span className="truncate">{module.shortLabel}</span>
+                        </div>
+                        <div className="mt-2 text-lg font-semibold">{summary.headline}</div>
+                        <div className="text-xs text-muted-foreground">{summary.caption}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <CartoMap
+                variant="positron"
+                className="h-[380px]"
+                centerLabel="Mapa de talhões"
+                routes={routes}
+                points={pragaPoints}
+                onRouteClick={(r) => setSelectedTalhaoId(r.id)}
+              />
+
+            </div>
+
+            {selectedTalhao && (
+              <div className="mt-5 rounded-xl border border-primary/30 bg-primary/5 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-primary">
+                      Talhão selecionado
+                    </div>
+                    <h3 className="mt-1 text-lg font-semibold">
+                      {selectedTalhao.payload.talhao || "Talhão"} ·{" "}
+                      {selectedTalhao.payload.cultura || "—"}
+                    </h3>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {selectedTalhao.payload.area_ha
+                        ? `${selectedTalhao.payload.area_ha} ha · `
+                        : ""}
+                      {selectedTalhao.payload.status || "Status não informado"}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedTalhaoId(null)}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border hover:bg-muted"
+                    aria-label="Fechar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  <CampoKpi
+                    label="Histórico de uso"
+                    value={selectedTalhao.payload.uso_solo ? "Registrado" : "—"}
+                    hint={selectedTalhao.payload.uso_solo || "Sem histórico"}
+                  />
+                  <CampoKpi
+                    label="Insumos aplicados"
+                    value={String(talhaoInsumos.length)}
+                    hint="registros associados"
+                  />
+                  <CampoKpi
+                    label="Focos de praga"
+                    value={String(talhaoPragas.length)}
+                    hint={
+                      talhaoPragas.some((p) => p.payload.severidade === "Alta")
+                        ? "atenção alta"
+                        : "monitoramento"
+                    }
+                  />
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setActiveTab("areas")}
+                    className="h-8 rounded-md border border-border px-3 text-xs hover:bg-muted"
+                  >
+                    Editar talhão
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("insumos")}
+                    className="h-8 rounded-md border border-border px-3 text-xs hover:bg-muted"
+                  >
+                    Ver insumos
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("pragas")}
+                    className="h-8 rounded-md border border-border px-3 text-xs hover:bg-muted"
+                  >
+                    Ver pragas
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("solo")}
+                    className="h-8 rounded-md border border-border px-3 text-xs hover:bg-muted"
+                  >
+                    Ver solo
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+
+      {activeModule && (
+        <CampoModuleSection
+          key={activeModule.id}
+          module={activeModule}
+          demoMode={demoMode}
+          records={recordsByModule[activeModule.id] ?? []}
+        />
+      )}
     </div>
   );
 }
+
 
 function CampoKpi({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
