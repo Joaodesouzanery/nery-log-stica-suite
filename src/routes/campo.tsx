@@ -693,9 +693,9 @@ function CampoPage() {
                 centerLabel="Mapa de talhões"
                 routes={routes}
                 points={pragaPoints}
-                route={routes[0]?.points}
                 onRouteClick={(r) => setSelectedTalhaoId(r.id)}
               />
+
             </div>
 
             {selectedTalhao && (
