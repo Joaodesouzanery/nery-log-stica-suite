@@ -4,6 +4,7 @@ import {
   Wallet,
   Truck,
   Package,
+  QrCode,
   Sprout,
   HelpCircle,
   Settings,
@@ -22,6 +23,7 @@ const generalItems = [
   { title: "Logística e Distribuição", url: "/logistica", icon: Truck },
   { title: "Financeiro", url: "/financeiro", icon: Wallet },
   { title: "Campo", url: "/campo", icon: Sprout },
+  { title: "Pecuária / Animais", url: "/pecuaria", icon: QrCode },
 ];
 
 const supportItems = [

@@ -36,7 +36,7 @@ export function StatCard({
               <span className={cn("font-medium", positive ? "text-success" : "text-destructive")}>
                 {delta}
               </span>{" "}
-              vs mes anterior
+              vs mês anterior
             </div>
           )}
         </div>

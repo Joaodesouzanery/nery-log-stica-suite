@@ -2,22 +2,26 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Boxes,
+  Building2,
+  ClipboardList,
   Download,
   Edit3,
+  LayoutDashboard,
+  MapPin,
+  Package,
   Plus,
   Trash2,
   Truck,
   Users,
-  MapPin,
-  Building2,
+  Wallet,
   Wrench,
-  LayoutDashboard,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   createOperationRecord,
   deleteOperationRecord,
-  listOperationRecords,
+  listOperationRecordsByAreaModule,
   OperationRecord,
   updateOperationRecord,
 } from "@/lib/supabase-operations";
@@ -37,11 +41,11 @@ import { PeriodPicker, defaultPeriod, type PeriodValue } from "@/components/peri
 export const Route = createFileRoute("/logistica")({
   head: () => ({
     meta: [
-      { title: "Logística e Distribuição — Nery Logística" },
+      { title: "Logística e Distribuição - Nery Logística" },
       {
         name: "description",
         content:
-          "Cadastro e acompanhamento de cargas, motoristas, rotas, frota e bases da operação Nery.",
+          "Cadastro e acompanhamento de cargas, motoristas, rotas, frota, bases, roteirização, expedição, embalagens, cestas e fretes.",
       },
     ],
   }),
@@ -51,7 +55,7 @@ export const Route = createFileRoute("/logistica")({
 type FieldConfig = {
   key: string;
   label: string;
-  type?: "text" | "number" | "date";
+  type?: "text" | "number" | "date" | "textarea";
   hint?: string;
 };
 
@@ -62,6 +66,8 @@ type ModuleConfig = {
   icon: React.ComponentType<{ className?: string }>;
   fields: FieldConfig[];
 };
+
+const AREA = "logistica";
 
 const modules: ModuleConfig[] = [
   {
@@ -82,7 +88,7 @@ const modules: ModuleConfig[] = [
       { key: "valor", label: "Valor (R$)", type: "number" },
       { key: "motorista", label: "Motorista" },
       { key: "placa", label: "Placa do Veículo" },
-      { key: "status", label: "Status", hint: "Em trânsito · Entregue · Atrasado · Aguardando" },
+      { key: "status", label: "Status", hint: "Em trânsito, Entregue, Atrasado, Aguardando" },
       { key: "eta", label: "ETA", type: "date" },
     ],
   },
@@ -98,7 +104,7 @@ const modules: ModuleConfig[] = [
       { key: "veiculo", label: "Veículo padrão" },
       { key: "atual_lat", label: "Latitude Atual", type: "number" },
       { key: "atual_lng", label: "Longitude Atual", type: "number" },
-      { key: "status", label: "Status", hint: "Disponível · Em rota · Folga" },
+      { key: "status", label: "Status", hint: "Disponível, Em rota, Folga" },
       { key: "score", label: "Score", type: "number" },
     ],
   },
@@ -128,11 +134,11 @@ const modules: ModuleConfig[] = [
     fields: [
       { key: "placa", label: "Placa" },
       { key: "modelo", label: "Modelo" },
-      { key: "tipo", label: "Tipo", hint: "Carreta · Truck · VUC · Van" },
+      { key: "tipo", label: "Tipo", hint: "Carreta, Truck, VUC, Van" },
       { key: "capacidade", label: "Capacidade (kg)", type: "number" },
       { key: "atual_lat", label: "Latitude Atual", type: "number" },
       { key: "atual_lng", label: "Longitude Atual", type: "number" },
-      { key: "status", label: "Status", hint: "Disponível · Em rota · Manutenção" },
+      { key: "status", label: "Status", hint: "Disponível, Em rota, Manutenção" },
       { key: "ultima_manutencao", label: "Última manutenção", type: "date" },
     ],
   },
@@ -143,7 +149,7 @@ const modules: ModuleConfig[] = [
     icon: Building2,
     fields: [
       { key: "nome", label: "Nome" },
-      { key: "tipo", label: "Tipo", hint: "Matriz · Filial · Centro de Distribuição" },
+      { key: "tipo", label: "Tipo", hint: "Matriz, Filial, Centro de Distribuição" },
       { key: "endereco", label: "Endereço" },
       { key: "cidade", label: "Cidade / UF" },
       { key: "lat", label: "Latitude", type: "number" },
@@ -151,9 +157,142 @@ const modules: ModuleConfig[] = [
       { key: "responsavel", label: "Responsável" },
     ],
   },
+  {
+    id: "roteirizacao",
+    label: "Roteirização de Entregas na Cidade",
+    description: "Sequência urbana de paradas, bairros, tempo previsto e responsável.",
+    icon: MapPin,
+    fields: [
+      { key: "rota", label: "Rota" },
+      { key: "motorista", label: "Motorista" },
+      { key: "veiculo", label: "Veículo" },
+      { key: "bairros", label: "Bairros atendidos" },
+      { key: "paradas", label: "Paradas", type: "number" },
+      { key: "distancia", label: "Distância (km)", type: "number" },
+      { key: "tempo_previsto", label: "Tempo previsto" },
+      { key: "status", label: "Status", hint: "Planejada, Em execução, Concluída" },
+    ],
+  },
+  {
+    id: "embalagens",
+    label: "Controle de Embalagens e Estoque",
+    description: "Saldos, mínimos, validade, fornecedor e necessidade de reposição.",
+    icon: Boxes,
+    fields: [
+      { key: "item", label: "Item" },
+      { key: "sku", label: "SKU" },
+      { key: "saldo", label: "Saldo", type: "number" },
+      { key: "minimo", label: "Estoque mínimo", type: "number" },
+      { key: "fornecedor", label: "Fornecedor" },
+      { key: "validade", label: "Validade", type: "date" },
+      { key: "status", label: "Status", hint: "OK, Repor, Bloqueado" },
+    ],
+  },
+  {
+    id: "cestas",
+    label: "Sistema de Cestas/Assinaturas (CSA)",
+    description: "Planos recorrentes, frequência, próxima entrega, itens padrão e pausas.",
+    icon: Package,
+    fields: [
+      { key: "cliente", label: "Cliente" },
+      { key: "plano", label: "Plano" },
+      { key: "frequencia", label: "Frequência" },
+      { key: "proxima_entrega", label: "Próxima entrega", type: "date" },
+      { key: "itens_padrao", label: "Itens padrão", type: "textarea" },
+      { key: "pausa_ate", label: "Pausa até", type: "date" },
+      { key: "status", label: "Status", hint: "Ativa, Pausada, Cancelada" },
+    ],
+  },
+  {
+    id: "expedicao",
+    label: "Checklist de Expedição Pré-carga",
+    description: "Conferência de pedido, temperatura, lacres e itens antes da saída.",
+    icon: ClipboardList,
+    fields: [
+      { key: "pedido", label: "Pedido" },
+      { key: "responsavel", label: "Responsável" },
+      { key: "itens", label: "Itens previstos", type: "textarea" },
+      { key: "conferidos", label: "Itens conferidos" },
+      { key: "temperatura", label: "Temperatura" },
+      { key: "lacres", label: "Lacres" },
+      { key: "status", label: "Status", hint: "Pendente, Aprovado, Revisar" },
+    ],
+  },
+  {
+    id: "fretes",
+    label: "Gestão de Fretes e Custo de Transporte",
+    description: "Custo por rota, transportadora, quilometragem, combustível e pedágios.",
+    icon: Wallet,
+    fields: [
+      { key: "rota", label: "Rota" },
+      { key: "transportadora", label: "Transportadora" },
+      { key: "km", label: "Km", type: "number" },
+      { key: "custo", label: "Custo total (R$)", type: "number" },
+      { key: "combustivel", label: "Combustível (R$)", type: "number" },
+      { key: "pedagio", label: "Pedágio (R$)", type: "number" },
+      { key: "status", label: "Status", hint: "Previsto, Fechado, Revisar" },
+    ],
+  },
 ];
 
-const AREA = "logistica";
+const demoByModule: Record<string, OperationRecord[]> = {
+  roteirizacao: [
+    record("roteirizacao", "1", {
+      rota: "Centro + Zona Sul",
+      motorista: "João Pereira",
+      veiculo: "VUC NRY-2045",
+      bairros: "Centro, Batel, Água Verde",
+      paradas: "18",
+      distancia: "42",
+      tempo_previsto: "4h20",
+      status: "Planejada",
+    }),
+  ],
+  embalagens: [
+    record("embalagens", "1", {
+      item: "Caixa hortifruti P",
+      sku: "CX-HF-P",
+      saldo: "620",
+      minimo: "300",
+      fornecedor: "Pack Verde",
+      validade: "2026-09-30",
+      status: "OK",
+    }),
+  ],
+  cestas: [
+    record("cestas", "1", {
+      cliente: "CSA Vila Verde",
+      plano: "Família semanal",
+      frequencia: "Semanal",
+      proxima_entrega: "2026-06-05",
+      itens_padrao: "Verduras, legumes, ovos",
+      pausa_ate: "",
+      status: "Ativa",
+    }),
+  ],
+  expedicao: [
+    record("expedicao", "1", {
+      pedido: "PED-8841",
+      responsavel: "Carla Souza",
+      itens: "24 cestas, 12 caixas de ovos",
+      conferidos: "Sim",
+      temperatura: "8 C",
+      lacres: "L-225, L-226",
+      status: "Aprovado",
+    }),
+  ],
+  fretes: [
+    record("fretes", "1", {
+      rota: "Curitiba > São Paulo",
+      transportadora: "Frota própria",
+      km: "408",
+      custo: "3250",
+      combustivel: "980",
+      pedagio: "210",
+      status: "Fechado",
+    }),
+  ],
+};
 
 type TabId = "visao-geral" | (typeof modules)[number]["id"];
 
@@ -161,6 +300,17 @@ const tabs: { id: TabId; label: string; icon: React.ComponentType<{ className?: 
   { id: "visao-geral", label: "Visão Geral", icon: LayoutDashboard },
   ...modules.map((m) => ({ id: m.id as TabId, label: m.label, icon: m.icon })),
 ];
+
+function record(module: string, id: string, payload: Record<string, string>): OperationRecord {
+  return {
+    id: `demo-${module}-${id}`,
+    area: AREA,
+    module,
+    payload,
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-01T00:00:00.000Z",
+  };
+}
 
 function emptyPayload(m: ModuleConfig) {
   return Object.fromEntries(m.fields.map((f) => [f.key, ""]));
@@ -196,7 +346,7 @@ function LogisticaPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         {tabs.map((t) => {
           const active = tab === t.id;
           return (
@@ -210,9 +360,9 @@ function LogisticaPage() {
                   : "border-border bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground",
               )}
             >
-              <span className="flex items-center gap-2">
-                <t.icon className="h-4 w-4 shrink-0 text-primary" />
-                <span className="truncate">{t.label}</span>
+              <span className="flex items-start gap-2">
+                <t.icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <span className="line-clamp-2 leading-snug">{t.label}</span>
               </span>
             </button>
           );
@@ -235,20 +385,20 @@ function OverviewTab() {
         height="h-[480px]"
       />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <OverviewCard label="Cargas totais" value={loading ? "—" : String(stats.total)} />
+        <OverviewCard label="Cargas totais" value={loading ? "-" : String(stats.total)} />
         <OverviewCard
           label="Em trânsito"
-          value={loading ? "—" : String(stats.trans)}
+          value={loading ? "-" : String(stats.trans)}
           tone="text-primary"
         />
         <OverviewCard
           label="Entregues"
-          value={loading ? "—" : String(stats.entregues)}
+          value={loading ? "-" : String(stats.entregues)}
           tone="text-success"
         />
         <OverviewCard
           label="Atrasadas"
-          value={loading ? "—" : String(stats.atrasadas)}
+          value={loading ? "-" : String(stats.atrasadas)}
           tone="text-destructive"
         />
       </div>
@@ -281,21 +431,21 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
   const [payload, setPayload] = useState<Record<string, string>>(emptyPayload(module));
 
   const query = useQuery({
-    queryKey: ["operation-records", module.id],
-    queryFn: () => listOperationRecords(module.id),
+    queryKey: ["operation-records", AREA, module.id],
+    queryFn: () => listOperationRecordsByAreaModule(AREA, module.id),
     enabled: !demoMode,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
 
   const records = useMemo<OperationRecord[]>(
-    () => (demoMode ? [] : (query.data ?? [])),
-    [demoMode, query.data],
+    () => (demoMode ? (demoByModule[module.id] ?? []) : (query.data ?? [])),
+    [demoMode, module.id, query.data],
   );
 
   const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: ["operation-records", module.id] });
-    void queryClient.invalidateQueries({ queryKey: ["operation-records", "logistica", "all"] });
+    void queryClient.invalidateQueries({ queryKey: ["operation-records", AREA, module.id] });
+    void queryClient.invalidateQueries({ queryKey: ["operation-records", AREA, "all"] });
   };
 
   const createMutation = useMutation({
@@ -410,7 +560,7 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
             {loading && (
               <tr>
                 <td colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
-                  Carregando…
+                  Carregando...
                 </td>
               </tr>
             )}
@@ -419,7 +569,7 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
                 <tr key={rec.id} className="border-b border-border last:border-0">
                   {module.fields.slice(0, 6).map((f) => (
                     <td key={f.key} className="py-3 pr-4">
-                      {rec.payload[f.key] ?? "—"}
+                      {rec.payload[f.key] ?? "-"}
                     </td>
                   ))}
                   <td className="py-3">
@@ -470,13 +620,21 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
                   {f.label}
                   {f.hint && <span className="ml-1 text-[10px] opacity-70">({f.hint})</span>}
                 </span>
-                <input
-                  type={f.type ?? "text"}
-                  step={f.type === "number" ? "any" : undefined}
-                  value={payload[f.key] ?? ""}
-                  onChange={(e) => setPayload((cur) => ({ ...cur, [f.key]: e.target.value }))}
-                  className="h-10 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
-                />
+                {f.type === "textarea" ? (
+                  <textarea
+                    value={payload[f.key] ?? ""}
+                    onChange={(e) => setPayload((cur) => ({ ...cur, [f.key]: e.target.value }))}
+                    className="min-h-24 rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                  />
+                ) : (
+                  <input
+                    type={f.type ?? "text"}
+                    step={f.type === "number" ? "any" : undefined}
+                    value={payload[f.key] ?? ""}
+                    onChange={(e) => setPayload((cur) => ({ ...cur, [f.key]: e.target.value }))}
+                    className="h-10 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                  />
+                )}
               </label>
             ))}
           </div>

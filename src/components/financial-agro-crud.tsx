@@ -65,10 +65,10 @@ const financialModules: ModuleConfig[] = [
     id: "fluxo",
     label: "Fluxo de Caixa Simples",
     shortLabel: "Fluxo",
-    description: "Registro de entradas e saidas adaptado ao produtor.",
+    description: "Registro de entradas e saídas adaptado ao produtor.",
     icon: Banknote,
     fields: [
-      { key: "descricao", label: "Descricao" },
+      { key: "descricao", label: "Descrição" },
       { key: "tipo", label: "Tipo" },
       { key: "categoria", label: "Categoria" },
       { key: "valor", label: "Valor", type: "number" },
@@ -79,20 +79,20 @@ const financialModules: ModuleConfig[] = [
     id: "custos",
     label: "Custos por Unidade",
     shortLabel: "Custos",
-    description: "Calculo automatico do custo de producao por duzia, saca ou kg.",
+    description: "Cálculo automático do custo de produção por dúzia, saca ou kg.",
     icon: Calculator,
     fields: [
       { key: "produto", label: "Produto" },
       { key: "unidade", label: "Unidade" },
       { key: "custo_total", label: "Custo total", type: "number" },
       { key: "quantidade", label: "Quantidade", type: "number" },
-      { key: "preco_venda", label: "Preco venda", type: "number" },
+      { key: "preco_venda", label: "Preço venda", type: "number" },
     ],
   },
   {
     id: "inadimplencia",
-    label: "Controle de Inadimplencia",
-    shortLabel: "Inadimplencia",
+    label: "Controle de Inadimplência",
+    shortLabel: "Inadimplência",
     description: "Alertas de pagamentos pendentes de clientes.",
     icon: AlertTriangle,
     fields: [
@@ -101,13 +101,13 @@ const financialModules: ModuleConfig[] = [
       { key: "vencimento", label: "Vencimento", type: "date" },
       { key: "status", label: "Status" },
       { key: "alerta_dias", label: "Alerta dias", type: "number" },
-      { key: "etapa_regua", label: "Etapa da regua" },
+      { key: "etapa_regua", label: "Etapa da régua" },
       { key: "canal", label: "Canal" },
     ],
   },
   {
     id: "estoque",
-    label: "Gestao de Estoque de Produtos Acabados",
+    label: "Gestão de Estoque de Produtos Acabados",
     shortLabel: "Estoque",
     description: "Produtos prontos para venda imediata, reservas e validade.",
     icon: Boxes,
@@ -121,35 +121,35 @@ const financialModules: ModuleConfig[] = [
   },
   {
     id: "equilibrio",
-    label: "Calculo de Ponto de Equilibrio",
-    shortLabel: "Equilibrio",
+    label: "Cálculo de Ponto de Equilíbrio",
+    shortLabel: "Equilíbrio",
     description: "Quanto vender para cobrir os custos.",
     icon: Scale,
     fields: [
       { key: "produto", label: "Produto" },
-      { key: "preco_venda", label: "Preco venda", type: "number" },
-      { key: "custo_variavel", label: "Custo variavel", type: "number" },
+      { key: "preco_venda", label: "Preço venda", type: "number" },
+      { key: "custo_variavel", label: "Custo variável", type: "number" },
       { key: "custo_fixo", label: "Custo fixo", type: "number" },
     ],
   },
   {
     id: "compras",
-    label: "Gestao de Compras",
+    label: "Gestão de Compras",
     shortLabel: "Compras",
     description: "Lista baseada na necessidade de insumos.",
     icon: ShoppingCart,
     fields: [
       { key: "insumo", label: "Insumo" },
       { key: "estoque_atual", label: "Estoque atual", type: "number" },
-      { key: "estoque_minimo", label: "Estoque minimo", type: "number" },
+      { key: "estoque_minimo", label: "Estoque mínimo", type: "number" },
       { key: "consumo_semanal", label: "Consumo semanal", type: "number" },
       { key: "fornecedor", label: "Fornecedor" },
     ],
   },
   {
     id: "credito",
-    label: "Controle de Credito Rural",
-    shortLabel: "Credito",
+    label: "Controle de Crédito Rural",
+    shortLabel: "Crédito",
     description: "Acompanhamento de parcelas de financiamentos.",
     icon: Landmark,
     fields: [
@@ -162,26 +162,26 @@ const financialModules: ModuleConfig[] = [
   },
   {
     id: "precos",
-    label: "Tabela de Precos Dinamica",
-    shortLabel: "Precos",
-    description: "Precos para atacado, varejo e assinaturas.",
+    label: "Tabela de Preços Dinâmica",
+    shortLabel: "Preços",
+    description: "Preços para atacado, varejo e assinaturas.",
     icon: Tags,
     fields: [
       { key: "produto", label: "Produto" },
       { key: "varejo", label: "Varejo", type: "number" },
       { key: "atacado", label: "Atacado", type: "number" },
       { key: "assinatura", label: "Assinatura", type: "number" },
-      { key: "promocao", label: "Promocao" },
+      { key: "promocao", label: "Promoção" },
     ],
   },
   {
     id: "hectare",
     label: "Custo por Hectare",
     shortLabel: "Hectare",
-    description: "Real x planejado por talhao e por safra.",
+    description: "Real x planejado por talhão e por safra.",
     icon: MapPin,
     fields: [
-      { key: "talhao", label: "Talhao" },
+      { key: "talhao", label: "Talhão" },
       { key: "safra", label: "Safra" },
       { key: "real", label: "Real", type: "number" },
       { key: "planejado", label: "Planejado", type: "number" },
@@ -189,9 +189,9 @@ const financialModules: ModuleConfig[] = [
   },
   {
     id: "safra",
-    label: "Orcamento de Safra",
+    label: "Orçamento de Safra",
     shortLabel: "Safra",
-    description: "Insumos, mao de obra, maquinario e curva de desembolso.",
+    description: "Insumos, mão de obra, maquinário e curva de desembolso.",
     icon: ClipboardList,
     fields: [
       { key: "etapa", label: "Etapa" },
@@ -204,11 +204,11 @@ const financialModules: ModuleConfig[] = [
     id: "roi",
     label: "Rentabilidade Field-by-Field",
     shortLabel: "ROI",
-    description: "ROI por talhao, hibrido e variedade.",
+    description: "ROI por talhão, híbrido e variedade.",
     icon: Sprout,
     fields: [
-      { key: "talhao", label: "Talhao" },
-      { key: "hibrido", label: "Hibrido" },
+      { key: "talhao", label: "Talhão" },
+      { key: "hibrido", label: "Híbrido" },
       { key: "receita", label: "Receita", type: "number" },
       { key: "custo", label: "Custo", type: "number" },
     ],
@@ -217,20 +217,20 @@ const financialModules: ModuleConfig[] = [
     id: "arrendamento",
     label: "Controle de Arrendamento",
     shortLabel: "Arrendamento",
-    description: "Custo por area, vencimentos e historico de reajustes.",
+    description: "Custo por área, vencimentos e histórico de reajustes.",
     icon: FileText,
     fields: [
       { key: "contrato", label: "Contrato" },
-      { key: "area", label: "Area ha", type: "number" },
+      { key: "area", label: "Área ha", type: "number" },
       { key: "valor_ha", label: "R$/ha", type: "number" },
       { key: "vencimento", label: "Vencimento", type: "date" },
     ],
   },
   {
     id: "contratos",
-    label: "Gestao de Contratos",
+    label: "Gestão de Contratos",
     shortLabel: "Contratos",
-    description: "Compra de insumos, venda de graos e fixacoes.",
+    description: "Compra de insumos, venda de grãos e fixações.",
     icon: FileSignature,
     fields: [
       { key: "contrato", label: "Contrato" },
@@ -251,8 +251,8 @@ const demoRecords: RecordsByModule = {
       data: "2026-05-22",
     }),
     record("fluxo", "2", {
-      descricao: "Racao poedeiras",
-      tipo: "saida",
+      descricao: "Ração poedeiras",
+      tipo: "saída",
       categoria: "Insumos",
       valor: "5200",
       data: "2026-05-21",
@@ -268,7 +268,7 @@ const demoRecords: RecordsByModule = {
   custos: [
     record("custos", "1", {
       produto: "Ovos caipira",
-      unidade: "duzia",
+      unidade: "dúzia",
       custo_total: "4820",
       quantidade: "1000",
       preco_venda: "9.90",
@@ -361,7 +361,7 @@ const demoRecords: RecordsByModule = {
   ],
   hectare: [
     record("hectare", "1", {
-      talhao: "Talhao A",
+      talhao: "Talhão A",
       safra: "2025/26",
       real: "3420",
       planejado: "3200",
@@ -377,7 +377,7 @@ const demoRecords: RecordsByModule = {
   ],
   roi: [
     record("roi", "1", {
-      talhao: "Talhao B",
+      talhao: "Talhão B",
       hibrido: "Pioneer P3380",
       receita: "412000",
       custo: "280000",
@@ -410,6 +410,14 @@ function num(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function isExpenseType(value: unknown) {
+  const normalized = String(value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+  return normalized.includes("saida");
+}
+
 function dateValue(value: unknown) {
   const date = new Date(String(value ?? ""));
   return Number.isNaN(date.getTime()) ? undefined : date;
@@ -436,11 +444,11 @@ function moduleSummary(moduleId: string, records: FinancialRecord[]) {
         .filter((r) => String(r.payload.tipo).toLowerCase().includes("entrada"))
         .reduce((sum, r) => sum + num(r.payload.valor), 0);
       const saidas = records
-        .filter((r) => String(r.payload.tipo).toLowerCase().includes("saida"))
+        .filter((r) => isExpenseType(r.payload.tipo))
         .reduce((sum, r) => sum + num(r.payload.valor), 0);
       return {
         headline: formatMoney(entradas - saidas),
-        caption: `${formatMoney(entradas)} entradas - ${formatMoney(saidas)} saidas`,
+        caption: `${formatMoney(entradas)} entradas - ${formatMoney(saidas)} saídas`,
         tone: entradas >= saidas ? "success" : "danger",
       };
     }
@@ -506,7 +514,7 @@ function moduleSummary(moduleId: string, records: FinancialRecord[]) {
       const avg = records.length
         ? records.reduce((sum, r) => sum + num(r.payload.varejo), 0) / records.length
         : 0;
-      return { headline: formatMoney(avg), caption: "preco medio varejo", tone: "info" };
+      return { headline: formatMoney(avg), caption: "preço médio varejo", tone: "info" };
     }
     default:
       return {
@@ -528,7 +536,7 @@ function buildDashboard(recordsByModule: RecordsByModule) {
     .filter((r) => String(r.payload.tipo).toLowerCase().includes("entrada"))
     .reduce((sum, r) => sum + num(r.payload.valor), 0);
   const saidas = fluxo
-    .filter((r) => String(r.payload.tipo).toLowerCase().includes("saida"))
+    .filter((r) => isExpenseType(r.payload.tipo))
     .reduce((sum, r) => sum + num(r.payload.valor), 0);
   const estoquePronto = estoque.reduce(
     (sum, r) => sum + Math.max(num(r.payload.saldo) - num(r.payload.reservado), 0),
@@ -555,7 +563,7 @@ function buildDashboard(recordsByModule: RecordsByModule) {
     parcelas,
     chart: [
       { label: "Entradas", valor: entradas },
-      { label: "Saidas", valor: saidas },
+      { label: "Saídas", valor: saidas },
       { label: "Inadimpl.", valor: vencidos.reduce((sum, r) => sum + num(r.payload.valor), 0) },
       { label: "Parcelas", valor: parcelas },
     ],
@@ -664,7 +672,6 @@ export function FinancialAgroCrud() {
   );
 }
 
-
 function FinancialDashboard({
   dashboard,
   demoMode,
@@ -697,9 +704,9 @@ function FinancialDashboard({
           tone={dashboard.saldo >= 0 ? "success" : "danger"}
         />
         <DashKpi label="Entradas" value={formatMoney(dashboard.entradas)} tone="success" />
-        <DashKpi label="Saidas" value={formatMoney(dashboard.saidas)} tone="danger" />
+        <DashKpi label="Saídas" value={formatMoney(dashboard.saidas)} tone="danger" />
         <DashKpi
-          label="Inadimplencia"
+          label="Inadimplência"
           value={formatMoney(dashboard.inadimplencia)}
           tone={dashboard.inadimplencia ? "warning" : "success"}
         />
@@ -862,7 +869,7 @@ function ModuleSection({
 
   const beginEdit = (recordToEdit: FinancialRecord) => {
     if (demoMode) {
-      toast.info("Dados demo nao podem ser editados.");
+      toast.info("Dados demo não podem ser editados.");
       return;
     }
     setEditing(recordToEdit);
@@ -882,7 +889,7 @@ function ModuleSection({
 
   const beginCostEdit = (recordToEdit: FinancialRecord) => {
     if (demoMode) {
-      toast.info("Dados demo nao podem ser editados.");
+      toast.info("Dados demo não podem ser editados.");
       return;
     }
     setEditingCost(recordToEdit);
@@ -949,7 +956,7 @@ function ModuleSection({
         <div className="rounded-lg border border-border bg-background/60 p-3">
           <div className="text-xs text-muted-foreground">Motor de regra</div>
           <div className="mt-1 text-lg font-semibold">Ativo</div>
-          <div className="text-xs text-muted-foreground">calculo automatico por modulo</div>
+          <div className="text-xs text-muted-foreground">cálculo automático por módulo</div>
         </div>
       </div>
 
@@ -963,7 +970,7 @@ function ModuleSection({
           onEditCost={beginCostEdit}
           onDeleteCost={(id) => {
             if (demoMode) {
-              toast.info("Dados demo nao podem ser excluidos.");
+              toast.info("Dados demo não podem ser excluídos.");
               return;
             }
             if (window.confirm("Excluir este custo por unidade?")) deleteCostMutation.mutate(id);
@@ -984,7 +991,7 @@ function ModuleSection({
                   {field.label}
                 </th>
               ))}
-              <th className="py-3 text-right font-medium">Acoes</th>
+              <th className="py-3 text-right font-medium">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -1007,7 +1014,7 @@ function ModuleSection({
                     <button
                       onClick={() => {
                         if (demoMode) {
-                          toast.info("Dados demo nao podem ser excluidos.");
+                          toast.info("Dados demo não podem ser excluídos.");
                           return;
                         }
                         if (window.confirm("Excluir este registro?")) {
@@ -1029,7 +1036,7 @@ function ModuleSection({
                   colSpan={module.fields.length + 1}
                   className="py-10 text-center text-sm text-muted-foreground"
                 >
-                  Nenhum registro real cadastrado neste modulo.
+                  Nenhum registro real cadastrado neste módulo.
                 </td>
               </tr>
             )}
@@ -1140,9 +1147,7 @@ function CashflowWorkspace({
   const entradas = records.filter((recordItem) =>
     String(recordItem.payload.tipo).toLowerCase().includes("entrada"),
   );
-  const saidas = records.filter((recordItem) =>
-    String(recordItem.payload.tipo).toLowerCase().includes("saida"),
-  );
+  const saidas = records.filter((recordItem) => isExpenseType(recordItem.payload.tipo));
   const entradaTotal = entradas.reduce((sum, recordItem) => sum + num(recordItem.payload.valor), 0);
   const saidaTotal = saidas.reduce((sum, recordItem) => sum + num(recordItem.payload.valor), 0);
   const custoTotal = costRecords.reduce(
@@ -1158,8 +1163,8 @@ function CashflowWorkspace({
     : 0;
   const dreRows = [
     ["Receita bruta", entradaTotal],
-    ["(-) Saidas operacionais", -saidaTotal],
-    ["(-) Custos de producao", -custoTotal],
+    ["(-) Saídas operacionais", -saidaTotal],
+    ["(-) Custos de produção", -custoTotal],
     ["(=) Resultado simplificado", entradaTotal - saidaTotal - custoTotal],
   ];
 
@@ -1168,7 +1173,7 @@ function CashflowWorkspace({
       <div className="rounded-lg border border-border bg-background/60 p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <h4 className="font-semibold">Entradas, Saidas e Custos</h4>
+            <h4 className="font-semibold">Entradas, Saídas e Custos</h4>
             <p className="text-xs text-muted-foreground">
               Custos por Unidade agora vivem dentro do Fluxo de Caixa.
             </p>
@@ -1178,7 +1183,7 @@ function CashflowWorkspace({
               onClick={onAddEntry}
               className="h-8 rounded-md border border-border px-2 text-xs hover:bg-muted"
             >
-              Entrada/Saida
+              Entrada/Saída
             </button>
             <button
               onClick={onAddCost}
@@ -1190,9 +1195,9 @@ function CashflowWorkspace({
         </div>
         <div className="grid gap-3 md:grid-cols-4">
           <DashKpi label="Entradas" value={formatMoney(entradaTotal)} tone="success" />
-          <DashKpi label="Saidas" value={formatMoney(saidaTotal)} tone="danger" />
+          <DashKpi label="Saídas" value={formatMoney(saidaTotal)} tone="danger" />
           <DashKpi
-            label="Margem unitaria"
+            label="Margem unitária"
             value={formatMoney(margemMedia)}
             tone={margemMedia >= 0 ? "success" : "danger"}
           />
@@ -1207,7 +1212,7 @@ function CashflowWorkspace({
                 <th className="py-2 pr-3 font-medium">Custo un.</th>
                 <th className="py-2 pr-3 font-medium">Venda</th>
                 <th className="py-2 pr-3 font-medium">Margem</th>
-                <th className="py-2 text-right font-medium">Acoes</th>
+                <th className="py-2 text-right font-medium">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -1275,7 +1280,7 @@ function CashflowWorkspace({
       <div className="rounded-lg border border-border bg-background/60 p-4">
         <h4 className="font-semibold">DRE simplificada</h4>
         <p className="text-xs text-muted-foreground">
-          Calculada pelos registros editaveis do Fluxo e de Custos.
+          Calculada pelos registros editáveis do Fluxo e de Custos.
         </p>
         <div className="mt-4 divide-y divide-border rounded-lg border border-border">
           {dreRows.map(([label, value], index) => (
@@ -1348,11 +1353,11 @@ function DefaultingWorkspace({
     String(a.payload.vencimento ?? "").localeCompare(String(b.payload.vencimento ?? "")),
   );
   const steps = [
-    { day: "D-3", title: "Lembrete amigavel", channel: "WhatsApp + E-mail" },
+    { day: "D-3", title: "Lembrete amigável", channel: "WhatsApp + E-mail" },
     { day: "D+1", title: "Aviso de atraso", channel: "WhatsApp" },
-    { day: "D+7", title: "Cobranca formal", channel: "E-mail + boleto" },
-    { day: "D+15", title: "Negativacao", channel: "Analise manual" },
-    { day: "D+30", title: "Protesto", channel: "Juridico" },
+    { day: "D+7", title: "Cobrança formal", channel: "E-mail + boleto" },
+    { day: "D+15", title: "Negativação", channel: "Análise manual" },
+    { day: "D+30", title: "Protesto", channel: "Jurídico" },
   ];
 
   return (
@@ -1362,14 +1367,14 @@ function DefaultingWorkspace({
           <div>
             <h4 className="font-semibold">Cronograma visual</h4>
             <p className="text-xs text-muted-foreground">
-              Vencimentos, atrasos e alertas configuraveis.
+              Vencimentos, atrasos e alertas configuráveis.
             </p>
           </div>
           <button
             onClick={onAdd}
             className="h-8 rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground"
           >
-            Novo titulo
+            Novo título
           </button>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
@@ -1409,8 +1414,8 @@ function DefaultingWorkspace({
           {timeline.length === 0 && (
             <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
               {demoMode
-                ? "Sem inadimplencia demonstrativa."
-                : "Cadastre titulos para ativar o cronograma."}
+                ? "Sem inadimplência demonstrativa."
+                : "Cadastre títulos para ativar o cronograma."}
             </div>
           )}
         </div>
@@ -1418,7 +1423,7 @@ function DefaultingWorkspace({
       <div className="rounded-lg border border-border bg-background/60 p-4">
         <div className="flex items-center gap-2">
           <BellRing className="h-4 w-4 text-primary" />
-          <h4 className="font-semibold">Regua de Cobranca</h4>
+          <h4 className="font-semibold">Régua de Cobrança</h4>
         </div>
         <div className="mt-4 space-y-3">
           {steps.map((step, index) => (
@@ -1441,7 +1446,7 @@ function DefaultingWorkspace({
           ))}
         </div>
         <p className="mt-4 rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground">
-          Para alterar a regua por cliente, edite os campos Etapa da regua, Canal e Alerta dias na
+          Para alterar a régua por cliente, edite os campos Etapa da régua, Canal e Alerta dias na
           tabela abaixo.
         </p>
       </div>

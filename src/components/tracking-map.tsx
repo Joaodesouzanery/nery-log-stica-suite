@@ -1,9 +1,10 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Truck, Package, MapPin, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Truck, Package, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { CartoMap, type MapPoint, type MapRoute } from "@/components/carto-map";
 import { useDemoMode } from "@/hooks/use-demo-mode";
+import { listOperationRecordsByArea } from "@/lib/supabase-operations";
 
 type RawRecord = {
   id: string;
@@ -21,12 +22,9 @@ function num(v: unknown): number | undefined {
 function statusTone(status?: string): MapPoint["tone"] {
   const s = (status ?? "").toLowerCase();
   if (s.includes("entregue") || s.includes("conclu")) return "success";
-  if (s.includes("atras") || s.includes("crít") || s.includes("critic"))
-    return "danger";
-  if (s.includes("aten") || s.includes("aguard") || s.includes("carreg"))
-    return "warning";
-  if (s.includes("trânsito") || s.includes("transito") || s.includes("rota"))
-    return "primary";
+  if (s.includes("atras") || s.includes("crít") || s.includes("critic")) return "danger";
+  if (s.includes("aten") || s.includes("aguard") || s.includes("carreg")) return "warning";
+  if (s.includes("trânsito") || s.includes("transito") || s.includes("rota")) return "primary";
   return "neutral";
 }
 
@@ -120,12 +118,7 @@ const demoRecords: RawRecord[] = [
 ];
 
 async function fetchLogistics(): Promise<RawRecord[]> {
-  const { data, error } = await supabase
-    .from("operation_records")
-    .select("*")
-    .eq("area", "logistica");
-  if (error) throw new Error(error.message);
-  return (data ?? []) as unknown as RawRecord[];
+  return listOperationRecordsByArea("logistica");
 }
 
 export function useTrackingData() {
@@ -138,12 +131,13 @@ export function useTrackingData() {
     refetchOnWindowFocus: false,
   });
 
-  const records = demoMode ? demoRecords : query.data ?? [];
+  const records = demoMode ? demoRecords : (query.data ?? []);
 
   const cargas = records.filter((r) => r.module === "cargas");
   const motoristas = records.filter((r) => r.module === "motoristas");
   const bases = records.filter((r) => r.module === "bases");
   const frota = records.filter((r) => r.module === "frota");
+  const rotas = records.filter((r) => r.module === "rotas");
 
   const points: MapPoint[] = [];
   const routes: MapRoute[] = [];
@@ -174,12 +168,7 @@ export function useTrackingData() {
         tone,
       });
     }
-    if (
-      oLat !== undefined &&
-      oLng !== undefined &&
-      dLat !== undefined &&
-      dLng !== undefined
-    ) {
+    if (oLat !== undefined && oLng !== undefined && dLat !== undefined && dLng !== undefined) {
       routes.push({
         id: `r-${c.id}`,
         points: [
@@ -235,10 +224,43 @@ export function useTrackingData() {
     }
   });
 
+  rotas.forEach((route) => {
+    const oLat = num(route.payload.origem_lat);
+    const oLng = num(route.payload.origem_lng);
+    const dLat = num(route.payload.destino_lat);
+    const dLng = num(route.payload.destino_lng);
+    if (oLat !== undefined && oLng !== undefined && dLat !== undefined && dLng !== undefined) {
+      points.push({
+        id: `ro-${route.id}`,
+        label: route.payload.nome || "Rota",
+        caption: `Origem · ${route.payload.origem ?? ""}`,
+        lat: oLat,
+        lng: oLng,
+        tone: "info",
+      });
+      points.push({
+        id: `rd-${route.id}`,
+        label: route.payload.nome || "Rota",
+        caption: `Destino · ${route.payload.destino ?? ""}`,
+        lat: dLat,
+        lng: dLng,
+        tone: "primary",
+      });
+      routes.push({
+        id: `rr-${route.id}`,
+        points: [
+          { lat: oLat, lng: oLng },
+          { lat: dLat, lng: dLng },
+        ],
+      });
+    }
+  });
+
   const stats = useMemo(() => {
-    const trans = cargas.filter((c) =>
-      (c.payload.status ?? "").toLowerCase().includes("trânsito") ||
-      (c.payload.status ?? "").toLowerCase().includes("transito"),
+    const trans = cargas.filter(
+      (c) =>
+        (c.payload.status ?? "").toLowerCase().includes("trânsito") ||
+        (c.payload.status ?? "").toLowerCase().includes("transito"),
     ).length;
     const entregues = cargas.filter((c) =>
       (c.payload.status ?? "").toLowerCase().includes("entregue"),
@@ -287,12 +309,7 @@ export function TrackingMap({
           />
         </div>
         <div className="col-span-12 lg:col-span-3 grid grid-cols-2 lg:grid-cols-1 gap-3">
-          <MiniStat
-            icon={Truck}
-            label="Em trânsito"
-            value={stats.trans}
-            tone="text-primary"
-          />
+          <MiniStat icon={Truck} label="Em trânsito" value={stats.trans} tone="text-primary" />
           <MiniStat
             icon={CheckCircle2}
             label="Entregues"
@@ -334,11 +351,7 @@ function MiniStat({
         <Icon className="w-3.5 h-3.5" />
         {label}
       </div>
-      <div className={`mt-1.5 text-2xl font-semibold tracking-tight ${tone}`}>
-        {value}
-      </div>
+      <div className={`mt-1.5 text-2xl font-semibold tracking-tight ${tone}`}>{value}</div>
     </div>
   );
 }
-
-export { MapPin };

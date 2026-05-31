@@ -43,14 +43,13 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
-
 export const Route = createFileRoute("/campo")({
   head: () => ({
     meta: [
-      { title: "Campo - Nery Logistica" },
+      { title: "Campo - Nery Logística" },
       {
         name: "description",
-        content: "Gestao de talhoes, plantio, manejo, rastreabilidade e estimativa de safra.",
+        content: "Gestão de talhões, plantio, manejo, rastreabilidade e estimativa de safra.",
       },
     ],
   }),
@@ -75,33 +74,33 @@ type CampoModule = {
 
 type RecordsByModule = Record<string, FieldRecord[]>;
 
-const statusOptions = ["Planejado", "Em andamento", "Concluido", "Alerta", "Bloqueado"];
+const statusOptions = ["Planejado", "Em andamento", "Concluído", "Alerta", "Bloqueado"];
 
 const campoModules: CampoModule[] = [
   {
     id: "areas",
-    label: "Areas e Talhoes",
-    shortLabel: "Talhoes",
-    description: "Mapeamento visual das areas, historico do solo e coordenadas GPS.",
+    label: "Áreas e Talhões",
+    shortLabel: "Talhões",
+    description: "Mapeamento visual das áreas, histórico do solo e coordenadas GPS.",
     icon: MapPinned,
     fields: [
-      { key: "talhao", label: "Talhao" },
+      { key: "talhao", label: "Talhão" },
       { key: "area_ha", label: "Area ha", type: "number" },
       { key: "cultura", label: "Cultura" },
-      { key: "uso_solo", label: "Historico de uso do solo", type: "textarea" },
+      { key: "uso_solo", label: "Histórico de uso do solo", type: "textarea" },
       { key: "coordenadas", label: "Coordenadas GPS", type: "gps" },
       { key: "status", label: "Status", type: "select", options: statusOptions },
     ],
   },
   {
     id: "calendario",
-    label: "Calendario de Plantio/Colheita",
-    shortLabel: "Calendario",
+    label: "Calendário de Plantio/Colheita",
+    shortLabel: "Calendário",
     description: "Cronograma visual baseado em sazonalidade e alertas de colheita.",
     icon: CalendarDays,
     fields: [
       { key: "cultura", label: "Cultura" },
-      { key: "talhao", label: "Talhao" },
+      { key: "talhao", label: "Talhão" },
       { key: "plantio_inicio", label: "Janela plantio inicio", type: "date" },
       { key: "colheita_prevista", label: "Colheita prevista", type: "date" },
       { key: "sazonalidade", label: "Sazonalidade" },
@@ -115,16 +114,16 @@ const campoModules: CampoModule[] = [
   },
   {
     id: "diario",
-    label: "Diario de Campo Digital",
-    shortLabel: "Diario",
-    description: "Notas, fotos, audio e observacoes com geolocalizacao.",
+    label: "Diário de Campo Digital",
+    shortLabel: "Diário",
+    description: "Notas, fotos, áudio e observações com geolocalização.",
     icon: AudioLines,
     fields: [
       { key: "titulo", label: "Titulo" },
-      { key: "talhao", label: "Talhao" },
-      { key: "observacao", label: "Observacao", type: "textarea" },
+      { key: "talhao", label: "Talhão" },
+      { key: "observacao", label: "Observação", type: "textarea" },
       { key: "foto_url", label: "Foto URL", type: "url" },
-      { key: "audio_url", label: "Audio URL", type: "url" },
+      { key: "audio_url", label: "Áudio URL", type: "url" },
       { key: "gps", label: "GPS", type: "gps" },
       { key: "offline_status", label: "Registro offline-first" },
     ],
@@ -133,7 +132,7 @@ const campoModules: CampoModule[] = [
     id: "insumos",
     label: "Registro de Insumos",
     shortLabel: "Insumos",
-    description: "Sementes, fertilizantes e defensivos aplicados por talhao.",
+    description: "Sementes, fertilizantes e defensivos aplicados por talhão.",
     icon: Leaf,
     fields: [
       { key: "insumo", label: "Insumo" },
@@ -143,21 +142,21 @@ const campoModules: CampoModule[] = [
         type: "select",
         options: ["Semente", "Fertilizante", "Defensivo"],
       },
-      { key: "talhao", label: "Talhao" },
+      { key: "talhao", label: "Talhão" },
       { key: "dose", label: "Dose" },
-      { key: "carencia", label: "Carencia dias", type: "number" },
+      { key: "carencia", label: "Carência dias", type: "number" },
       { key: "custo_hectare", label: "Custo por hectare", type: "number" },
     ],
   },
   {
     id: "pragas",
-    label: "Manejo de Pragas e Doencas",
+    label: "Manejo de Pragas e Doenças",
     shortLabel: "Pragas",
-    description: "Historico de ocorrencias, mapa de focos e tratamentos.",
+    description: "Histórico de ocorrências, mapa de focos e tratamentos.",
     icon: ScanSearch,
     fields: [
       { key: "ocorrencia", label: "Ocorrencia" },
-      { key: "talhao", label: "Talhao" },
+      { key: "talhao", label: "Talhão" },
       {
         key: "severidade",
         label: "Severidade",
@@ -165,53 +164,53 @@ const campoModules: CampoModule[] = [
         options: ["Baixa", "Media", "Alta"],
       },
       { key: "tratamento", label: "Tratamento", type: "textarea" },
-      { key: "receituario", label: "Receituario agronomico" },
+      { key: "receituario", label: "Receituário agronômico" },
       { key: "gps", label: "GPS do foco", type: "gps" },
-      { key: "carencia", label: "Carencia pos-aplicacao", type: "number" },
+      { key: "carencia", label: "Carência pós-aplicação", type: "number" },
     ],
   },
   {
     id: "lotes",
     label: "Rastreabilidade de Lotes",
     shortLabel: "Lotes",
-    description: "QR Code por lote, cadeia de custodia e conformidade organica.",
+    description: "QR Code por lote, cadeia de custódia e conformidade orgânica.",
     icon: QrCode,
     fields: [
       { key: "lote", label: "Lote" },
       { key: "origem", label: "Origem" },
-      { key: "talhao", label: "Talhao" },
+      { key: "talhao", label: "Talhão" },
       { key: "custodia", label: "Cadeia de custodia", type: "textarea" },
       {
         key: "conformidade",
-        label: "Conformidade organica",
+        label: "Conformidade orgânica",
         type: "select",
-        options: ["Conforme", "Em analise", "Nao conforme"],
+        options: ["Conforme", "Em análise", "Não conforme"],
       },
     ],
   },
   {
     id: "solo",
-    label: "Gestao de Solo",
+    label: "Gestão de Solo",
     shortLabel: "Solo",
-    description: "Analises quimicas, calagem e historico por talhao.",
+    description: "Análises químicas, calagem e histórico por talhão.",
     icon: Microscope,
     fields: [
-      { key: "talhao", label: "Talhao" },
+      { key: "talhao", label: "Talhão" },
       { key: "ph", label: "pH", type: "number" },
       { key: "mo", label: "MO", type: "number" },
       { key: "ctc", label: "CTC", type: "number" },
-      { key: "calagem", label: "Recomendacao de calagem", type: "textarea" },
+      { key: "calagem", label: "Recomendação de calagem", type: "textarea" },
       { key: "data_laudo", label: "Data do laudo", type: "date" },
     ],
   },
   {
     id: "irrigacao",
-    label: "Controle de Irrigacao",
-    shortLabel: "Irrigacao",
-    description: "Turnos de rega, consumo por talhao e integracao IoT preparada.",
+    label: "Controle de Irrigação",
+    shortLabel: "Irrigação",
+    description: "Turnos de rega, consumo por talhão e integração IoT preparada.",
     icon: Droplets,
     fields: [
-      { key: "talhao", label: "Talhao" },
+      { key: "talhao", label: "Talhão" },
       { key: "turno", label: "Turno automatico" },
       { key: "consumo_m3", label: "Consumo m3", type: "number" },
       { key: "sensor_iot", label: "Sensor IoT" },
@@ -220,31 +219,31 @@ const campoModules: CampoModule[] = [
   },
   {
     id: "meteorologia",
-    label: "Previsao Meteorologica",
+    label: "Previsão Meteorológica",
     shortLabel: "Clima",
-    description: "Previsao de 7 dias, alertas push preparados e historico climatico.",
+    description: "Previsão de 7 dias, alertas push preparados e histórico climático.",
     icon: CloudSun,
     fields: [
       { key: "local", label: "Local" },
-      { key: "periodo", label: "Periodo" },
+      { key: "periodo", label: "Período" },
       {
         key: "risco",
         label: "Risco",
         type: "select",
         options: ["Geada", "Chuva", "Seca", "Normal"],
       },
-      { key: "previsao_7d", label: "Previsao 7 dias", type: "textarea" },
+      { key: "previsao_7d", label: "Previsão 7 dias", type: "textarea" },
       { key: "alerta_push", label: "Alerta push" },
     ],
   },
   {
     id: "maquinario",
-    label: "Gestao de Maquinario",
-    shortLabel: "Maquinas",
+    label: "Gestão de Maquinário",
+    shortLabel: "Máquinas",
     description: "Manutencao preventiva, horimetro e custo operacional.",
     icon: Tractor,
     fields: [
-      { key: "maquina", label: "Maquina" },
+      { key: "maquina", label: "Máquina" },
       { key: "horimetro", label: "Horimetro", type: "number" },
       { key: "troca_oleo", label: "Troca de oleo", type: "date" },
       { key: "manutencao", label: "Alerta de manutencao" },
@@ -255,13 +254,13 @@ const campoModules: CampoModule[] = [
     id: "estimativa",
     label: "Estimativa de Safra",
     shortLabel: "Safra",
-    description: "Produtividade esperada, historico e cenarios por talhao.",
+    description: "Produtividade esperada, histórico e cenários por talhão.",
     icon: Wheat,
     fields: [
-      { key: "talhao", label: "Talhao" },
+      { key: "talhao", label: "Talhão" },
       { key: "cultura", label: "Cultura" },
       { key: "produtividade", label: "Produtividade esperada", type: "number" },
-      { key: "historico", label: "Comparacao historica" },
+      { key: "historico", label: "Comparação histórica" },
       {
         key: "cenario",
         label: "Cenario",
@@ -272,45 +271,45 @@ const campoModules: CampoModule[] = [
   },
   {
     id: "planejamento",
-    label: "Planejamento de Plantio por Talhao",
+    label: "Planejamento de Plantio por Talhão",
     shortLabel: "Plantio",
     description: "Variedade, taxa de semeadura, espacamento e janela de plantio.",
     icon: Sprout,
     fields: [
-      { key: "talhao", label: "Talhao" },
+      { key: "talhao", label: "Talhão" },
       { key: "variedade", label: "Variedade" },
       { key: "taxa_semeadura", label: "Taxa de semeadura" },
       { key: "espacamento", label: "Espacamento" },
       { key: "meta_produtividade", label: "Meta produtividade", type: "number" },
-      { key: "janela_valida", label: "Validacao da janela" },
+      { key: "janela_valida", label: "Validação da janela" },
     ],
   },
   {
     id: "prescricao",
     label: "Mapa de Prescricao",
     shortLabel: "Prescricao",
-    description: "Taxa variavel por zona, exportacao para maquina preparada e historico.",
+    description: "Taxa variável por zona, exportação para máquina preparada e histórico.",
     icon: MapPinned,
     fields: [
       { key: "zona", label: "Zona de manejo" },
-      { key: "talhao", label: "Talhao" },
+      { key: "talhao", label: "Talhão" },
       { key: "semente", label: "Semente" },
       { key: "fertilizante", label: "Fertilizante" },
       { key: "defensivo", label: "Defensivo" },
-      { key: "exportacao", label: "Arquivo para maquina" },
+      { key: "exportacao", label: "Arquivo para máquina" },
     ],
   },
   {
     id: "modelo",
     label: "Monitoramento + Modelo de Cultura",
     shortLabel: "Modelo",
-    description: "Simulacao de crescimento por clima, solo, manejo e genetica.",
+    description: "Simulação de crescimento por clima, solo, manejo e genética.",
     icon: Leaf,
     fields: [
       { key: "cultura", label: "Cultura" },
-      { key: "talhao", label: "Talhao" },
-      { key: "estagio", label: "Estagio fenologico" },
-      { key: "projecao", label: "Projecao produtividade", type: "number" },
+      { key: "talhao", label: "Talhão" },
+      { key: "estagio", label: "Estágio fenológico" },
+      { key: "projecao", label: "Projeção produtividade", type: "number" },
       { key: "sensibilidade", label: "Sensibilidade ao clima", type: "textarea" },
     ],
   },
@@ -322,7 +321,7 @@ const campoModules: CampoModule[] = [
     icon: ScanSearch,
     fields: [
       { key: "alerta", label: "Alerta" },
-      { key: "talhao", label: "Talhao" },
+      { key: "talhao", label: "Talhão" },
       { key: "foto_url", label: "Foto URL", type: "url" },
       { key: "gps", label: "GPS", type: "gps" },
       { key: "responsavel", label: "Agronomo" },
@@ -333,39 +332,39 @@ const campoModules: CampoModule[] = [
     id: "pre-colheita",
     label: "Estimativa Pre-Colheita",
     shortLabel: "Pre-colheita",
-    description: "Amostragem digital para logistica, contratos e projecao por talhao.",
+    description: "Amostragem digital para logística, contratos e projeção por talhão.",
     icon: Wheat,
     fields: [
-      { key: "talhao", label: "Talhao" },
+      { key: "talhao", label: "Talhão" },
       { key: "amostragem", label: "Amostragem digital", type: "textarea" },
-      { key: "projecao", label: "Projecao por talhao", type: "number" },
-      { key: "contratos", label: "Saida para contratos" },
+      { key: "projecao", label: "Projeção por talhão", type: "number" },
+      { key: "contratos", label: "Saída para contratos" },
     ],
   },
   {
     id: "analise-solo",
-    label: "Analise de Solo Integrada",
+    label: "Análise de Solo Integrada",
     shortLabel: "Laudos",
-    description: "Importacao de laudos, recomendacao automatica e historico por camada.",
+    description: "Importação de laudos, recomendação automática e histórico por camada.",
     icon: Upload,
     fields: [
-      { key: "talhao", label: "Talhao" },
+      { key: "talhao", label: "Talhão" },
       { key: "laudo_url", label: "Laudo URL", type: "url" },
       { key: "camada", label: "Camada" },
-      { key: "recomendacao", label: "Recomendacao automatica", type: "textarea" },
+      { key: "recomendacao", label: "Recomendação automática", type: "textarea" },
       { key: "data", label: "Data", type: "date" },
     ],
   },
   {
     id: "nitrogenio",
-    label: "Gestao de Nitrogenio",
-    shortLabel: "Nitrogenio",
+    label: "Gestão de Nitrogênio",
+    shortLabel: "Nitrogênio",
     description: "Dose preditiva por clima e solo, janelas e risco de chuva.",
     icon: Leaf,
     fields: [
-      { key: "talhao", label: "Talhao" },
+      { key: "talhao", label: "Talhão" },
       { key: "dose", label: "Dose preditiva", type: "number" },
-      { key: "janela", label: "Janela de aplicacao" },
+      { key: "janela", label: "Janela de aplicação" },
       { key: "risco_chuva", label: "Risco de perda por chuva" },
       { key: "status", label: "Status", type: "select", options: statusOptions },
     ],
@@ -375,15 +374,15 @@ const campoModules: CampoModule[] = [
 const demoRecords: RecordsByModule = {
   areas: [
     record("areas", "1", {
-      talhao: "Talhao A",
+      talhao: "Talhão A",
       area_ha: "18",
       cultura: "Hortalicas",
-      uso_solo: "Rotacao com milho verde e adubacao organica.",
+      uso_solo: "Rotação com milho verde e adubação orgânica.",
       coordenadas: "22,70;36,56;55,48;72,40",
       status: "Em andamento",
     }),
     record("areas", "2", {
-      talhao: "Talhao B",
+      talhao: "Talhão B",
       area_ha: "12",
       cultura: "Mandioca",
       uso_solo: "Pousio curto e cobertura vegetal.",
@@ -394,7 +393,7 @@ const demoRecords: RecordsByModule = {
   calendario: [
     record("calendario", "1", {
       cultura: "Hortalicas",
-      talhao: "Talhao A",
+      talhao: "Talhão A",
       plantio_inicio: "2026-06-05",
       colheita_prevista: "2026-08-12",
       sazonalidade: "Inverno seco",
@@ -403,9 +402,9 @@ const demoRecords: RecordsByModule = {
   ],
   diario: [
     record("diario", "1", {
-      titulo: "Vistoria pos-chuva",
-      talhao: "Talhao A",
-      observacao: "Solo com boa infiltracao e sem erosao visivel.",
+      titulo: "Vistoria pós-chuva",
+      talhao: "Talhão A",
+      observacao: "Solo com boa infiltração e sem erosão visível.",
       foto_url: "",
       audio_url: "",
       gps: "-23.5505,-46.6333",
@@ -414,9 +413,9 @@ const demoRecords: RecordsByModule = {
   ],
   insumos: [
     record("insumos", "1", {
-      insumo: "Composto organico",
+      insumo: "Composto orgânico",
       tipo: "Fertilizante",
-      talhao: "Talhao A",
+      talhao: "Talhão A",
       dose: "2 t/ha",
       carencia: "0",
       custo_hectare: "480",
@@ -425,7 +424,7 @@ const demoRecords: RecordsByModule = {
   pragas: [
     record("pragas", "1", {
       ocorrencia: "Lagarta",
-      talhao: "Talhao A",
+      talhao: "Talhão A",
       severidade: "Media",
       tratamento: "Monitorar bordadura e aplicar biologico se aumentar.",
       receituario: "BIO-2026-009",
@@ -436,9 +435,9 @@ const demoRecords: RecordsByModule = {
   lotes: [
     record("lotes", "1", {
       lote: "ORG-2026-001",
-      origem: "Talhao A",
-      talhao: "Talhao A",
-      custodia: "Colheita, higienizacao, embalagem e expedicao registrados.",
+      origem: "Talhão A",
+      talhao: "Talhão A",
+      custodia: "Colheita, higienização, embalagem e expedição registrados.",
       conformidade: "Conforme",
     }),
   ],
@@ -486,7 +485,7 @@ function moduleSummary(module: CampoModule, records: FieldRecord[]) {
     case "areas":
       return {
         headline: `${records.reduce((sum, item) => sum + num(item.payload.area_ha), 0).toLocaleString("pt-BR")} ha`,
-        caption: `${records.length} talhoes mapeados`,
+        caption: `${records.length} talhões mapeados`,
       };
     case "insumos":
       return {
@@ -534,7 +533,7 @@ function CampoPage() {
     ) as RecordsByModule;
   }, [demoMode, queryResults]);
 
-  const talhoes = recordsByModule.areas ?? [];
+  const talhoes = useMemo(() => recordsByModule.areas ?? [], [recordsByModule.areas]);
   const routes: MapRoute[] = useMemo(
     () =>
       talhoes
@@ -543,14 +542,14 @@ function CampoPage() {
           if (!points.length) return null;
           return {
             id: item.id,
-            label: item.payload.talhao || "Talhao",
+            label: item.payload.talhao || "Talhão",
             points,
             status: item.payload.status,
             description: item.payload.uso_solo,
             tone: "success" as const,
             meta: {
               Cultura: item.payload.cultura,
-              Area: item.payload.area_ha ? `${item.payload.area_ha} ha` : undefined,
+              Área: item.payload.area_ha ? `${item.payload.area_ha} ha` : undefined,
             },
           };
         })
@@ -610,8 +609,7 @@ function CampoPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Campo</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Talhões, manejo, rastreabilidade, clima e planejamento agrícola em uma tela
-            operacional.
+            Talhões, manejo, rastreabilidade, clima e planejamento agrícola em uma tela operacional.
           </p>
         </div>
         <div className="rounded-md border border-border px-3 py-1 text-xs text-muted-foreground">
@@ -654,7 +652,11 @@ function CampoPage() {
             <div className="grid gap-4 xl:grid-cols-[1fr_430px]">
               <div>
                 <div className="grid gap-3 md:grid-cols-4">
-                  <CampoKpi label="Talhões" value={String(talhoes.length)} hint="áreas cadastradas" />
+                  <CampoKpi
+                    label="Talhões"
+                    value={String(talhoes.length)}
+                    hint="áreas cadastradas"
+                  />
                   <CampoKpi
                     label="Área total"
                     value={`${hectares.toLocaleString("pt-BR")} ha`}
@@ -695,7 +697,6 @@ function CampoPage() {
                 points={pragaPoints}
                 onRouteClick={(r) => setSelectedTalhaoId(r.id)}
               />
-
             </div>
 
             {selectedTalhao && (
@@ -789,7 +790,6 @@ function CampoPage() {
   );
 }
 
-
 function CampoKpi({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div className="rounded-lg border border-border bg-background/60 p-3">
@@ -825,7 +825,7 @@ function CampoModuleSection({
     onError: (error) => {
       if (module.id === "diario") {
         queueOfflineDiary(payload);
-        toast.info("Registro salvo na fila offline do Diario.");
+        toast.info("Registro salvo na fila offline do Diário.");
         setOpen(false);
         return;
       }
@@ -864,7 +864,7 @@ function CampoModuleSection({
 
   const beginEdit = (recordItem: FieldRecord) => {
     if (demoMode) {
-      toast.info("Dados demo nao podem ser editados.");
+      toast.info("Dados demo não podem ser editados.");
       return;
     }
     setEditing(recordItem);
@@ -907,10 +907,10 @@ function CampoModuleSection({
         <CampoKpi
           label="Registros"
           value={String(records.length)}
-          hint={demoMode ? "somente leitura" : "editavel"}
+          hint={demoMode ? "somente leitura" : "editável"}
         />
         <CampoKpi
-          label="Automacao"
+          label="Automação"
           value={module.id === "diario" ? "Offline" : "Ativa"}
           hint="v1 funcional"
         />
@@ -929,7 +929,7 @@ function CampoModuleSection({
                   {field.label}
                 </th>
               ))}
-              <th className="py-3 text-right font-medium">Acoes</th>
+              <th className="py-3 text-right font-medium">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -952,7 +952,7 @@ function CampoModuleSection({
                     <button
                       onClick={() => {
                         if (demoMode) {
-                          toast.info("Dados demo nao podem ser excluidos.");
+                          toast.info("Dados demo não podem ser excluídos.");
                           return;
                         }
                         if (window.confirm("Excluir este registro?"))
@@ -973,7 +973,7 @@ function CampoModuleSection({
                   colSpan={module.fields.slice(0, 5).length + 1}
                   className="py-10 text-center text-sm text-muted-foreground"
                 >
-                  Nenhum registro real cadastrado neste modulo.
+                  Nenhum registro real cadastrado neste módulo.
                 </td>
               </tr>
             )}
@@ -1032,13 +1032,13 @@ function FieldInput({
 
   const fillGps = () => {
     if (!navigator.geolocation) {
-      toast.error("Geolocalizacao indisponivel neste navegador.");
+      toast.error("Geolocalização indisponível neste navegador.");
       return;
     }
     navigator.geolocation.getCurrentPosition(
       (position) =>
         onChange(`${position.coords.latitude.toFixed(6)},${position.coords.longitude.toFixed(6)}`),
-      () => toast.error("Nao foi possivel capturar o GPS."),
+      () => toast.error("Não foi possível capturar o GPS."),
     );
   };
 
@@ -1150,8 +1150,8 @@ function CalendarStrip({ records }: { records: FieldRecord[] }) {
 function OfflineNote() {
   return (
     <div className="mb-4 rounded-lg border border-border bg-background/60 p-3 text-sm text-muted-foreground">
-      O Diario salva registros em uma fila local se o Supabase estiver indisponivel. Campos de foto
-      e audio aceitam URL nesta v1.
+      O Diário salva registros em uma fila local se o Supabase estiver indisponível. Campos de foto
+      e áudio aceitam URL nesta v1.
     </div>
   );
 }

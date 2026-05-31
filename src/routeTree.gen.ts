@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PecuariaRouteImport } from './routes/pecuaria'
 import { Route as LogisticaRouteImport } from './routes/logistica'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as CampoRouteImport } from './routes/campo'
 import { Route as IndexRouteImport } from './routes/index'
 
+const PecuariaRoute = PecuariaRouteImport.update({
+  id: '/pecuaria',
+  path: '/pecuaria',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LogisticaRoute = LogisticaRouteImport.update({
   id: '/logistica',
   path: '/logistica',
@@ -40,12 +46,14 @@ export interface FileRoutesByFullPath {
   '/campo': typeof CampoRoute
   '/financeiro': typeof FinanceiroRoute
   '/logistica': typeof LogisticaRoute
+  '/pecuaria': typeof PecuariaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/campo': typeof CampoRoute
   '/financeiro': typeof FinanceiroRoute
   '/logistica': typeof LogisticaRoute
+  '/pecuaria': typeof PecuariaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/campo': typeof CampoRoute
   '/financeiro': typeof FinanceiroRoute
   '/logistica': typeof LogisticaRoute
+  '/pecuaria': typeof PecuariaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/campo' | '/financeiro' | '/logistica'
+  fullPaths: '/' | '/campo' | '/financeiro' | '/logistica' | '/pecuaria'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/campo' | '/financeiro' | '/logistica'
-  id: '__root__' | '/' | '/campo' | '/financeiro' | '/logistica'
+  to: '/' | '/campo' | '/financeiro' | '/logistica' | '/pecuaria'
+  id: '__root__' | '/' | '/campo' | '/financeiro' | '/logistica' | '/pecuaria'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,10 +76,18 @@ export interface RootRouteChildren {
   CampoRoute: typeof CampoRoute
   FinanceiroRoute: typeof FinanceiroRoute
   LogisticaRoute: typeof LogisticaRoute
+  PecuariaRoute: typeof PecuariaRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/pecuaria': {
+      id: '/pecuaria'
+      path: '/pecuaria'
+      fullPath: '/pecuaria'
+      preLoaderRoute: typeof PecuariaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/logistica': {
       id: '/logistica'
       path: '/logistica'
@@ -107,7 +124,18 @@ const rootRouteChildren: RootRouteChildren = {
   CampoRoute: CampoRoute,
   FinanceiroRoute: FinanceiroRoute,
   LogisticaRoute: LogisticaRoute,
+  PecuariaRoute: PecuariaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

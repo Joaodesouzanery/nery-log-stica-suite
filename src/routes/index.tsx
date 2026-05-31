@@ -134,9 +134,7 @@ function DashboardPage() {
   const visibleRows = useMemo(() => {
     return rows
       .filter((r) => (onlyTransit ? r.status === "Em trânsito" : true))
-      .filter((r) =>
-        Object.values(r).join(" ").toLowerCase().includes(query.toLowerCase()),
-      )
+      .filter((r) => Object.values(r).join(" ").toLowerCase().includes(query.toLowerCase()))
       .sort((a, b) => (sortAsc ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date)));
   }, [onlyTransit, query, rows, sortAsc]);
 
@@ -151,9 +149,7 @@ function DashboardPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Visão Geral</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {demoMode
-              ? "Dados demonstrativos da operação."
-              : "Dados reais da operação cadastrada."}
+            {demoMode ? "Dados demonstrativos da operação." : "Dados reais da operação cadastrada."}
           </p>
         </div>
         <div className="flex items-center gap-2">

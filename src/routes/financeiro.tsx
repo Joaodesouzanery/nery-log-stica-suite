@@ -9,10 +9,10 @@ import { PeriodPicker, defaultPeriod, type PeriodValue } from "@/components/peri
 export const Route = createFileRoute("/financeiro")({
   head: () => ({
     meta: [
-      { title: "Financeiro Agro - Nery Logistica" },
+      { title: "Financeiro Agro - Nery Logística" },
       {
         name: "description",
-        content: "Gestao financeira agro completa com dados reais e modo demo separado.",
+        content: "Gestão financeira agro completa com dados reais e modo demo separado.",
       },
     ],
   }),
@@ -37,7 +37,7 @@ function FinanceiroPage() {
         <div className="flex items-center gap-2">
           <PeriodPicker value={period} onChange={setPeriod} />
           <button
-            onClick={() => toast.success(`Exportacao preparada para ${period.label}.`)}
+            onClick={() => toast.success(`Exportação preparada para ${period.label}.`)}
             className="flex h-10 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm hover:bg-muted"
           >
             <Download className="h-4 w-4" />

@@ -19,6 +19,30 @@ export async function listOperationRecords(module: string): Promise<OperationRec
   return (data ?? []) as OperationRecord[];
 }
 
+export async function listOperationRecordsByArea(area: string): Promise<OperationRecord[]> {
+  const { data, error } = await supabase
+    .from("operation_records")
+    .select("*")
+    .eq("area", area)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as OperationRecord[];
+}
+
+export async function listOperationRecordsByAreaModule(
+  area: string,
+  module: string,
+): Promise<OperationRecord[]> {
+  const { data, error } = await supabase
+    .from("operation_records")
+    .select("*")
+    .eq("area", area)
+    .eq("module", module)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as OperationRecord[];
+}
+
 export async function createOperationRecord(input: {
   area: string;
   module: string;

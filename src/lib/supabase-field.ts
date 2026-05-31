@@ -8,7 +8,7 @@ export type FieldRecord = {
   updated_at?: string;
 };
 
-const fieldRecords = () => supabase.from("field_records" as "financial_records");
+const fieldRecords = () => supabase.from("field_records");
 
 export async function listFieldRecords(module: string): Promise<FieldRecord[]> {
   const { data, error } = await fieldRecords()
