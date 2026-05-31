@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      field_records: {
+        Row: {
+          created_at: string
+          id: string
+          module: string
+          payload: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          module: string
+          payload?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          module?: string
+          payload?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       financial_records: {
         Row: {
           created_at: string
