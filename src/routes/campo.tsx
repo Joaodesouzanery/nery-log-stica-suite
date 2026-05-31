@@ -8,6 +8,7 @@ import {
   CloudSun,
   Droplets,
   Edit3,
+  LayoutDashboard,
   Leaf,
   MapPinned,
   Microscope,
@@ -19,9 +20,10 @@ import {
   Trash2,
   Upload,
   Wheat,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { CartoMap } from "@/components/carto-map";
+import { CartoMap, type MapPoint, type MapRoute } from "@/components/carto-map";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import {
   createFieldRecord,
@@ -40,6 +42,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/campo")({
   head: () => ({
