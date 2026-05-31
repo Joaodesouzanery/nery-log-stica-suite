@@ -363,9 +363,9 @@ export function CartoMap({
           style={{ left: `${clamp(selected.x, 8, 72)}%`, top: `${clamp(selected.y, 8, 72)}%` }}
         >
           <div className="font-semibold">{selected.item.label ?? "Rota"}</div>
-          {(selected.item.caption || selected.item.status) && (
+          {((selected.type === "point" && selected.item.caption) || selected.item.status) && (
             <div className="mt-1 text-muted-foreground">
-              {selected.item.caption || selected.item.status}
+              {(selected.type === "point" ? selected.item.caption : undefined) || selected.item.status}
             </div>
           )}
           {selected.item.description && (
