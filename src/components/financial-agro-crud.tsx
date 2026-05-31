@@ -13,6 +13,7 @@ import {
   FileSignature,
   FileText,
   Landmark,
+  LayoutDashboard,
   MapPin,
   Plus,
   Scale,
