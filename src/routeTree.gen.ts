@@ -9,12 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SustentabilidadeRouteImport } from './routes/sustentabilidade'
 import { Route as PecuariaRouteImport } from './routes/pecuaria'
 import { Route as LogisticaRouteImport } from './routes/logistica'
+import { Route as InteligenciaRouteImport } from './routes/inteligencia'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CampoRouteImport } from './routes/campo'
 import { Route as IndexRouteImport } from './routes/index'
 
+const SustentabilidadeRoute = SustentabilidadeRouteImport.update({
+  id: '/sustentabilidade',
+  path: '/sustentabilidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PecuariaRoute = PecuariaRouteImport.update({
   id: '/pecuaria',
   path: '/pecuaria',
@@ -25,9 +33,19 @@ const LogisticaRoute = LogisticaRouteImport.update({
   path: '/logistica',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InteligenciaRoute = InteligenciaRouteImport.update({
+  id: '/inteligencia',
+  path: '/inteligencia',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FinanceiroRoute = FinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CampoRoute = CampoRouteImport.update({
@@ -44,43 +62,87 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/campo': typeof CampoRoute
+  '/dashboard': typeof DashboardRoute
   '/financeiro': typeof FinanceiroRoute
+  '/inteligencia': typeof InteligenciaRoute
   '/logistica': typeof LogisticaRoute
   '/pecuaria': typeof PecuariaRoute
+  '/sustentabilidade': typeof SustentabilidadeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/campo': typeof CampoRoute
+  '/dashboard': typeof DashboardRoute
   '/financeiro': typeof FinanceiroRoute
+  '/inteligencia': typeof InteligenciaRoute
   '/logistica': typeof LogisticaRoute
   '/pecuaria': typeof PecuariaRoute
+  '/sustentabilidade': typeof SustentabilidadeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/campo': typeof CampoRoute
+  '/dashboard': typeof DashboardRoute
   '/financeiro': typeof FinanceiroRoute
+  '/inteligencia': typeof InteligenciaRoute
   '/logistica': typeof LogisticaRoute
   '/pecuaria': typeof PecuariaRoute
+  '/sustentabilidade': typeof SustentabilidadeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/campo' | '/financeiro' | '/logistica' | '/pecuaria'
+  fullPaths:
+    | '/'
+    | '/campo'
+    | '/dashboard'
+    | '/financeiro'
+    | '/inteligencia'
+    | '/logistica'
+    | '/pecuaria'
+    | '/sustentabilidade'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/campo' | '/financeiro' | '/logistica' | '/pecuaria'
-  id: '__root__' | '/' | '/campo' | '/financeiro' | '/logistica' | '/pecuaria'
+  to:
+    | '/'
+    | '/campo'
+    | '/dashboard'
+    | '/financeiro'
+    | '/inteligencia'
+    | '/logistica'
+    | '/pecuaria'
+    | '/sustentabilidade'
+  id:
+    | '__root__'
+    | '/'
+    | '/campo'
+    | '/dashboard'
+    | '/financeiro'
+    | '/inteligencia'
+    | '/logistica'
+    | '/pecuaria'
+    | '/sustentabilidade'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CampoRoute: typeof CampoRoute
+  DashboardRoute: typeof DashboardRoute
   FinanceiroRoute: typeof FinanceiroRoute
+  InteligenciaRoute: typeof InteligenciaRoute
   LogisticaRoute: typeof LogisticaRoute
   PecuariaRoute: typeof PecuariaRoute
+  SustentabilidadeRoute: typeof SustentabilidadeRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sustentabilidade': {
+      id: '/sustentabilidade'
+      path: '/sustentabilidade'
+      fullPath: '/sustentabilidade'
+      preLoaderRoute: typeof SustentabilidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pecuaria': {
       id: '/pecuaria'
       path: '/pecuaria'
@@ -95,11 +157,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LogisticaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/inteligencia': {
+      id: '/inteligencia'
+      path: '/inteligencia'
+      fullPath: '/inteligencia'
+      preLoaderRoute: typeof InteligenciaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/financeiro': {
       id: '/financeiro'
       path: '/financeiro'
       fullPath: '/financeiro'
       preLoaderRoute: typeof FinanceiroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/campo': {
@@ -122,9 +198,12 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CampoRoute: CampoRoute,
+  DashboardRoute: DashboardRoute,
   FinanceiroRoute: FinanceiroRoute,
+  InteligenciaRoute: InteligenciaRoute,
   LogisticaRoute: LogisticaRoute,
   PecuariaRoute: PecuariaRoute,
+  SustentabilidadeRoute: SustentabilidadeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

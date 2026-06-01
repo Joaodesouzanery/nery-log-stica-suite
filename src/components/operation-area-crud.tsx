@@ -1,0 +1,430 @@
+import type { ComponentType, ReactNode } from "react";
+import { useMemo, useState } from "react";
+import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
+import { Download, Edit3, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import {
+  createOperationRecord,
+  deleteOperationRecord,
+  listOperationRecordsByAreaModule,
+  OperationRecord,
+  updateOperationRecord,
+} from "@/lib/supabase-operations";
+import { useDemoMode } from "@/hooks/use-demo-mode";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+import { PeriodPicker, defaultPeriod, type PeriodValue } from "@/components/period-picker";
+
+export type OperationFieldConfig = {
+  key: string;
+  label: string;
+  type?: "text" | "number" | "date" | "textarea";
+  hint?: string;
+};
+
+export type OperationModuleConfig = {
+  id: string;
+  label: string;
+  shortLabel: string;
+  description: string;
+  icon: ComponentType<{ className?: string }>;
+  fields: OperationFieldConfig[];
+};
+
+type RecordsByModule = Record<string, OperationRecord[]>;
+
+type OperationAreaPageProps = {
+  area: string;
+  title: string;
+  description: string;
+  modules: OperationModuleConfig[];
+  demoByModule: RecordsByModule;
+  renderModuleAddon?: (module: OperationModuleConfig, records: OperationRecord[]) => ReactNode;
+};
+
+function emptyPayload(module: OperationModuleConfig) {
+  return Object.fromEntries(module.fields.map((field) => [field.key, ""]));
+}
+
+function numberValue(value: unknown) {
+  const parsed = Number(String(value ?? "").replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function exportCsv(area: string, module: OperationModuleConfig, records: OperationRecord[]) {
+  const header = module.fields.map((field) => field.label);
+  const lines = records.map((recordItem) =>
+    module.fields.map((field) => recordItem.payload[field.key] ?? ""),
+  );
+  const csv = [header, ...lines]
+    .map((line) => line.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `nery-${area}-${module.id}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function statusNeedsAttention(status: unknown) {
+  const value = String(status ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+  return ["alerta", "atencao", "critico", "revisar", "pendente", "vencido"].some((term) =>
+    value.includes(term),
+  );
+}
+
+export function OperationAreaPage({
+  area,
+  title,
+  description,
+  modules,
+  demoByModule,
+  renderModuleAddon,
+}: OperationAreaPageProps) {
+  const { demoMode } = useDemoMode();
+  const [period, setPeriod] = useState<PeriodValue>(defaultPeriod());
+  const [tab, setTab] = useState(modules[0].id);
+  const current = modules.find((module) => module.id === tab) ?? modules[0];
+
+  const queries = useQueries({
+    queries: modules.map((module) => ({
+      queryKey: ["operation-records", area, module.id],
+      queryFn: () => listOperationRecordsByAreaModule(area, module.id),
+      enabled: !demoMode,
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+    })),
+  });
+
+  const recordsByModule = useMemo<RecordsByModule>(() => {
+    if (demoMode) return demoByModule;
+    return Object.fromEntries(
+      modules.map((module, index) => [module.id, queries[index].data ?? []]),
+    );
+  }, [demoByModule, demoMode, modules, queries]);
+
+  const allRecords = Object.values(recordsByModule).flat();
+  const alerts = allRecords.filter((recordItem) =>
+    statusNeedsAttention(recordItem.payload.status),
+  ).length;
+  const numericTotal = allRecords.reduce(
+    (sum, recordItem) =>
+      sum +
+      numberValue(
+        recordItem.payload.valor_estimado ??
+          recordItem.payload.co2e ??
+          recordItem.payload.margem ??
+          recordItem.payload.valor,
+      ),
+    0,
+  );
+
+  return (
+    <div className="px-8 py-6 max-w-[1600px] mx-auto space-y-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{description}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {demoMode
+              ? "Modo DEMO ligado: exemplos protegidos contra edição."
+              : "Modo DEMO desligado: salvando registros reais no Supabase."}
+          </p>
+        </div>
+        <PeriodPicker value={period} onChange={setPeriod} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi label="Abas ativas" value={String(modules.length)} />
+        <Kpi label="Registros" value={String(allRecords.length)} tone="info" />
+        <Kpi label="Alertas" value={String(alerts)} tone={alerts ? "warning" : "success"} />
+        <Kpi label="Indicador acumulado" value={numericTotal.toLocaleString("pt-BR")} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        {modules.map((module) => {
+          const active = tab === module.id;
+          return (
+            <button
+              key={module.id}
+              onClick={() => setTab(module.id)}
+              className={cn(
+                "min-h-16 rounded-lg border p-3 text-left text-sm font-medium transition-colors",
+                active
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+              )}
+            >
+              <span className="flex items-start gap-2">
+                <module.icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <span className="line-clamp-2 leading-snug">{module.shortLabel}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <ModuleTab
+        area={area}
+        module={current}
+        records={recordsByModule[current.id] ?? []}
+        addon={renderModuleAddon?.(current, recordsByModule[current.id] ?? [])}
+      />
+    </div>
+  );
+}
+
+function Kpi({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  tone?: "default" | "info" | "warning" | "success";
+}) {
+  const toneClass = {
+    default: "text-foreground",
+    info: "text-primary",
+    warning: "text-warning-foreground",
+    success: "text-success",
+  }[tone];
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`mt-1.5 text-2xl font-semibold ${toneClass}`}>{value}</div>
+    </div>
+  );
+}
+
+function ModuleTab({
+  area,
+  module,
+  records,
+  addon,
+}: {
+  area: string;
+  module: OperationModuleConfig;
+  records: OperationRecord[];
+  addon?: ReactNode;
+}) {
+  const { demoMode } = useDemoMode();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<OperationRecord | null>(null);
+  const [payload, setPayload] = useState<Record<string, string>>(emptyPayload(module));
+
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["operation-records", area, module.id] });
+  };
+
+  const createMutation = useMutation({
+    mutationFn: createOperationRecord,
+    onSuccess: () => {
+      toast.success("Registro adicionado.");
+      setOpen(false);
+      invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: updateOperationRecord,
+    onSuccess: () => {
+      toast.success("Registro atualizado.");
+      setOpen(false);
+      invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteOperationRecord,
+    onSuccess: () => {
+      toast.success("Registro excluído.");
+      invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const beginCreate = () => {
+    if (demoMode) return toast.info("Desligue o modo DEMO para cadastrar dados reais.");
+    setEditing(null);
+    setPayload(emptyPayload(module));
+    setOpen(true);
+  };
+
+  const beginEdit = (recordItem: OperationRecord) => {
+    if (demoMode) return toast.info("Dados demo não podem ser editados.");
+    setEditing(recordItem);
+    setPayload({ ...emptyPayload(module), ...recordItem.payload });
+    setOpen(true);
+  };
+
+  const submit = () => {
+    if (demoMode) return;
+    if (editing) updateMutation.mutate({ id: editing.id, payload });
+    else createMutation.mutate({ area, module: module.id, payload });
+  };
+
+  return (
+    <section className="rounded-xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <module.icon className="h-4 w-4" />
+          </div>
+          <div>
+            <h3 className="font-semibold">{module.label}</h3>
+            <p className="text-xs text-muted-foreground">{module.description}</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() =>
+              records.length
+                ? exportCsv(area, module, records)
+                : toast.info("Nenhum registro para exportar.")
+            }
+            className="h-9 rounded-lg border border-border px-3 text-sm flex items-center gap-2 hover:bg-muted"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Exportar CSV
+          </button>
+          <button
+            onClick={beginCreate}
+            className="h-9 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground inline-flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Adicionar
+          </button>
+        </div>
+      </div>
+
+      {addon && <div className="mb-5">{addon}</div>}
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-left text-xs text-muted-foreground">
+              {module.fields.slice(0, 6).map((field) => (
+                <th key={field.key} className="py-3 pr-4 font-medium">
+                  {field.label}
+                </th>
+              ))}
+              <th className="py-3 text-right font-medium">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((recordItem) => (
+              <tr key={recordItem.id} className="border-b border-border last:border-0">
+                {module.fields.slice(0, 6).map((field) => (
+                  <td key={field.key} className="py-3 pr-4">
+                    {recordItem.payload[field.key] || "-"}
+                  </td>
+                ))}
+                <td className="py-3">
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => beginEdit(recordItem)}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border hover:bg-muted"
+                      aria-label="Editar"
+                    >
+                      <Edit3 className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (demoMode) return toast.info("Dados demo não podem ser excluídos.");
+                        if (window.confirm("Excluir este registro?"))
+                          deleteMutation.mutate(recordItem.id);
+                      }}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-destructive hover:bg-muted"
+                      aria-label="Excluir"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {records.length === 0 && (
+              <tr>
+                <td colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                  Nenhum registro real cadastrado neste módulo.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Editar registro" : "Adicionar registro"}</DialogTitle>
+            <DialogDescription>{module.label}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {module.fields.map((field) => (
+              <label key={field.key} className="grid gap-1.5 text-sm">
+                <span className="text-muted-foreground">
+                  {field.label}
+                  {field.hint && (
+                    <span className="ml-1 text-[10px] opacity-70">({field.hint})</span>
+                  )}
+                </span>
+                {field.type === "textarea" ? (
+                  <textarea
+                    value={payload[field.key] ?? ""}
+                    onChange={(event) =>
+                      setPayload((current) => ({ ...current, [field.key]: event.target.value }))
+                    }
+                    className="min-h-24 rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                  />
+                ) : (
+                  <input
+                    type={field.type ?? "text"}
+                    step={field.type === "number" ? "any" : undefined}
+                    value={payload[field.key] ?? ""}
+                    onChange={(event) =>
+                      setPayload((current) => ({ ...current, [field.key]: event.target.value }))
+                    }
+                    className="h-10 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                  />
+                )}
+              </label>
+            ))}
+          </div>
+          <DialogFooter>
+            <button
+              onClick={() => setOpen(false)}
+              className="h-9 rounded-lg border border-border px-3 text-sm"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={submit}
+              disabled={createMutation.isPending || updateMutation.isPending}
+              className="h-9 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground disabled:opacity-60"
+            >
+              Salvar
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </section>
+  );
+}

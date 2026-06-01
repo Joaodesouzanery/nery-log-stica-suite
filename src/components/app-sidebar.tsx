@@ -1,6 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
+  BarChart3,
+  Leaf,
   Wallet,
   Truck,
   Package,
@@ -19,11 +21,13 @@ import { Switch } from "@/components/ui/switch";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 
 const generalItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Logística e Distribuição", url: "/logistica", icon: Truck },
   { title: "Financeiro", url: "/financeiro", icon: Wallet },
   { title: "Campo", url: "/campo", icon: Sprout },
   { title: "Pecuária / Animais", url: "/pecuaria", icon: QrCode },
+  { title: "Sustentabilidade", url: "/sustentabilidade", icon: Leaf },
+  { title: "Inteligência", url: "/inteligencia", icon: BarChart3 },
 ];
 
 const supportItems = [
