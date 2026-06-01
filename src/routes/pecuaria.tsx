@@ -426,6 +426,68 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
     onError: (error) => toast.error(error.message),
   });
 
+  const [pdfLoadingId, setPdfLoadingId] = useState<string | null>(null);
+
+  const generateAnimalPdf = async (recordItem: OperationRecord) => {
+    if (demoMode) {
+      toast.info("Desligue o modo DEMO para gerar e salvar PDFs.");
+      return;
+    }
+    setPdfLoadingId(recordItem.id);
+    try {
+      const doc = new jsPDF({ unit: "pt", format: "a4" });
+      const ident = recordItem.payload.identificacao || recordItem.id.slice(0, 8);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.text("Ficha do Animal — Nery Agro", 40, 50);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      doc.text(`Identificação: ${ident}`, 40, 75);
+      doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, 40, 92);
+      doc.setDrawColor(200);
+      doc.line(40, 102, 555, 102);
+
+      let y = 125;
+      module.fields.forEach((field) => {
+        const value = recordItem.payload[field.key];
+        if (!value) return;
+        doc.setFont("helvetica", "bold");
+        doc.text(`${field.label}:`, 40, y);
+        doc.setFont("helvetica", "normal");
+        const wrapped = doc.splitTextToSize(String(value), 380);
+        doc.text(wrapped, 200, y);
+        y += Math.max(18, wrapped.length * 14);
+        if (y > 780) {
+          doc.addPage();
+          y = 50;
+        }
+      });
+
+      const blob = doc.output("blob");
+      const safeIdent = ident.replace(/[^a-zA-Z0-9_-]/g, "_");
+      const path = `${recordItem.id}/${safeIdent}.pdf`;
+      const { error: uploadError } = await supabase.storage
+        .from("animal-pdfs")
+        .upload(path, blob, { contentType: "application/pdf", upsert: true });
+      if (uploadError) throw new Error(uploadError.message);
+
+      const { data: urlData } = supabase.storage.from("animal-pdfs").getPublicUrl(path);
+      const pdfUrl = urlData.publicUrl;
+
+      await updateMutation.mutateAsync({
+        id: recordItem.id,
+        payload: { ...recordItem.payload, pdf_url: pdfUrl },
+      });
+
+      window.open(pdfUrl, "_blank", "noopener");
+      toast.success("PDF gerado e salvo na ficha do animal.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao gerar PDF.");
+    } finally {
+      setPdfLoadingId(null);
+    }
+  };
+
   const beginCreate = () => {
     if (demoMode) return toast.info("Desligue o modo DEMO para cadastrar dados reais.");
     setEditing(null);
@@ -495,13 +557,19 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
             </tr>
           </thead>
           <tbody>
-            {loading && (
-              <tr>
-                <td colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
-                  Carregando...
-                </td>
-              </tr>
-            )}
+            {loading &&
+              Array.from({ length: 4 }).map((_, idx) => (
+                <tr key={`sk-${idx}`} className="border-b border-border last:border-0">
+                  {module.fields.slice(0, 6).map((field) => (
+                    <td key={field.key} className="py-3 pr-4">
+                      <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+                    </td>
+                  ))}
+                  <td className="py-3">
+                    <div className="ml-auto h-3 w-16 animate-pulse rounded bg-muted" />
+                  </td>
+                </tr>
+              ))}
             {!loading &&
               records.map((recordItem) => (
                 <tr key={recordItem.id} className="border-b border-border last:border-0">
@@ -512,6 +580,28 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
                   ))}
                   <td className="py-3">
                     <div className="flex justify-end gap-2">
+                      {module.id === "animal" && (
+                        <button
+                          onClick={() => {
+                            if (recordItem.payload.pdf_url) {
+                              window.open(recordItem.payload.pdf_url, "_blank", "noopener");
+                            } else {
+                              void generateAnimalPdf(recordItem);
+                            }
+                          }}
+                          disabled={pdfLoadingId === recordItem.id}
+                          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2 text-xs hover:bg-muted disabled:opacity-60"
+                          aria-label="Gerar PDF"
+                          title={recordItem.payload.pdf_url ? "Abrir PDF salvo" : "Gerar PDF"}
+                        >
+                          {pdfLoadingId === recordItem.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <FileText className="h-3.5 w-3.5" />
+                          )}
+                          PDF
+                        </button>
+                      )}
                       <button
                         onClick={() => beginEdit(recordItem)}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border hover:bg-muted"
