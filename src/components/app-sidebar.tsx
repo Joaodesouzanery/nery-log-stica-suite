@@ -96,6 +96,7 @@ export function AppSidebar() {
               <li key={i.title}>
                 <Link
                   to={i.url}
+                  preload="intent"
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                     active

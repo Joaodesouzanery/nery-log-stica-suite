@@ -122,7 +122,7 @@ function metadata(item: MapPoint | MapRoute) {
 export function CartoMap({
   region = "fixed",
   variant = "voyager",
-  centerLabel = "Operacao Nery",
+  centerLabel = "Operação Nery",
   route = [],
   routes = [],
   points = [],
