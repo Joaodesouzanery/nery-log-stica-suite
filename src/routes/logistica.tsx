@@ -37,6 +37,7 @@ import {
 import { cn } from "@/lib/utils";
 import { TrackingMap, useTrackingData } from "@/components/tracking-map";
 import { PeriodPicker, defaultPeriod, type PeriodValue } from "@/components/period-picker";
+import { ImportRecordsButton } from "@/components/import-records-button";
 
 export const Route = createFileRoute("/logistica")({
   head: () => ({
@@ -493,6 +494,14 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
     else createMutation.mutate({ area: AREA, module: module.id, payload });
   };
 
+  const importRows = async (rows: Record<string, string>[]) => {
+    if (demoMode) return toast.info("Desligue o modo DEMO para importar dados reais.");
+    for (const row of rows) {
+      await createOperationRecord({ area: AREA, module: module.id, payload: row });
+    }
+    invalidate();
+  };
+
   const handleExport = () => {
     if (records.length === 0) {
       toast.info("Nenhum registro para exportar.");
@@ -527,6 +536,7 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
           </div>
         </div>
         <div className="flex gap-2">
+          <ImportRecordsButton fields={module.fields} disabled={demoMode} onImport={importRows} />
           <button
             onClick={handleExport}
             className="h-9 rounded-lg border border-border px-3 text-sm flex items-center gap-2 hover:bg-muted"

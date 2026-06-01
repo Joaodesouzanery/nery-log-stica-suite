@@ -1,8 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Truck, Package, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { CartoMap, type MapPoint, type MapRoute } from "@/components/carto-map";
+import { AgroMap } from "@/components/agro-map";
+import type { MapPoint, MapRoute } from "@/components/carto-map";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import { listOperationRecordsByArea } from "@/lib/supabase-operations";
 
@@ -20,11 +20,14 @@ function num(v: unknown): number | undefined {
 }
 
 function statusTone(status?: string): MapPoint["tone"] {
-  const s = (status ?? "").toLowerCase();
+  const s = (status ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
   if (s.includes("entregue") || s.includes("conclu")) return "success";
-  if (s.includes("atras") || s.includes("crít") || s.includes("critic")) return "danger";
+  if (s.includes("atras") || s.includes("critic")) return "danger";
   if (s.includes("aten") || s.includes("aguard") || s.includes("carreg")) return "warning";
-  if (s.includes("trânsito") || s.includes("transito") || s.includes("rota")) return "primary";
+  if (s.includes("transito") || s.includes("rota")) return "primary";
   return "neutral";
 }
 
@@ -43,6 +46,8 @@ const demoRecords: RawRecord[] = [
       destino_lng: "-46.63",
       status: "Em trânsito",
       motorista: "João Pereira",
+      placa: "NER-2A45",
+      eta: "14:40",
     },
   },
   {
@@ -59,6 +64,8 @@ const demoRecords: RawRecord[] = [
       destino_lng: "-43.17",
       status: "Em trânsito",
       motorista: "Carla Souza",
+      placa: "NER-9R21",
+      eta: "18:10",
     },
   },
   {
@@ -75,6 +82,8 @@ const demoRecords: RawRecord[] = [
       destino_lng: "-47.93",
       status: "Entregue",
       motorista: "Marcos Lima",
+      placa: "NER-4D88",
+      eta: "Concluído",
     },
   },
   {
@@ -91,6 +100,8 @@ const demoRecords: RawRecord[] = [
       destino_lng: "-51.23",
       status: "Atrasado",
       motorista: "Ana Ribeiro",
+      placa: "NER-7P30",
+      eta: "+2h",
     },
   },
   {
@@ -98,10 +109,11 @@ const demoRecords: RawRecord[] = [
     area: "logistica",
     module: "bases",
     payload: {
-      nome: "Base Central — SP",
+      nome: "Base Central - SP",
       lat: "-23.55",
       lng: "-46.63",
       tipo: "Matriz",
+      responsavel: "Operação Sudeste",
     },
   },
   {
@@ -109,10 +121,11 @@ const demoRecords: RawRecord[] = [
     area: "logistica",
     module: "bases",
     payload: {
-      nome: "CD Nordeste — Recife",
+      nome: "CD Nordeste - Recife",
       lat: "-8.05",
       lng: "-34.88",
       tipo: "Centro de Distribuição",
+      responsavel: "Operação Nordeste",
     },
   },
 ];
@@ -132,12 +145,11 @@ export function useTrackingData() {
   });
 
   const records = demoMode ? demoRecords : (query.data ?? []);
-
   const cargas = records.filter((r) => r.module === "cargas");
   const motoristas = records.filter((r) => r.module === "motoristas");
   const bases = records.filter((r) => r.module === "bases");
   const frota = records.filter((r) => r.module === "frota");
-  const rotas = records.filter((r) => r.module === "rotas");
+  const rotas = records.filter((r) => r.module === "rotas" || r.module === "roteirizacao");
 
   const points: MapPoint[] = [];
   const routes: MapRoute[] = [];
@@ -148,29 +160,44 @@ export function useTrackingData() {
     const dLat = num(c.payload.destino_lat);
     const dLng = num(c.payload.destino_lng);
     const tone = statusTone(c.payload.status);
+    const sharedMeta = {
+      origem: c.payload.origem,
+      destino: c.payload.destino,
+      motorista: c.payload.motorista,
+      placa: c.payload.placa,
+      ETA: c.payload.eta,
+      status: c.payload.status,
+    };
     if (oLat !== undefined && oLng !== undefined) {
       points.push({
         id: `o-${c.id}`,
         label: c.payload.codigo || "Carga",
-        caption: `Origem · ${c.payload.origem ?? ""}`,
+        caption: `Origem - ${c.payload.origem ?? ""}`,
         lat: oLat,
         lng: oLng,
         tone: "info",
+        meta: { tipo: "Origem", ...sharedMeta },
       });
     }
     if (dLat !== undefined && dLng !== undefined) {
       points.push({
         id: `d-${c.id}`,
         label: c.payload.codigo || "Carga",
-        caption: `${c.payload.status ?? ""} · ${c.payload.destino ?? ""}`,
+        caption: `${c.payload.status ?? ""} - ${c.payload.destino ?? ""}`,
         lat: dLat,
         lng: dLng,
         tone,
+        meta: { tipo: "Destino", ...sharedMeta },
       });
     }
     if (oLat !== undefined && oLng !== undefined && dLat !== undefined && dLng !== undefined) {
       routes.push({
         id: `r-${c.id}`,
+        label: c.payload.codigo || "Rota da carga",
+        tone,
+        status: c.payload.status,
+        description: `${c.payload.origem ?? ""} -> ${c.payload.destino ?? ""}`,
+        meta: sharedMeta,
         points: [
           { lat: oLat, lng: oLng },
           { lat: dLat, lng: dLng },
@@ -190,6 +217,12 @@ export function useTrackingData() {
         lat,
         lng,
         tone: statusTone(m.payload.status),
+        meta: {
+          status: m.payload.status,
+          telefone: m.payload.telefone,
+          veiculo: m.payload.veiculo,
+          rota: m.payload.rota,
+        },
       });
     }
   });
@@ -205,6 +238,12 @@ export function useTrackingData() {
         lat,
         lng,
         tone: statusTone(f.payload.status),
+        meta: {
+          status: f.payload.status,
+          placa: f.payload.placa,
+          motorista: f.payload.motorista,
+          tipo: f.payload.tipo,
+        },
       });
     }
   });
@@ -220,6 +259,11 @@ export function useTrackingData() {
         lat,
         lng,
         tone: "info",
+        meta: {
+          tipo: b.payload.tipo,
+          endereco: b.payload.endereco,
+          responsavel: b.payload.responsavel,
+        },
       });
     }
   });
@@ -230,24 +274,41 @@ export function useTrackingData() {
     const dLat = num(route.payload.destino_lat);
     const dLng = num(route.payload.destino_lng);
     if (oLat !== undefined && oLng !== undefined && dLat !== undefined && dLng !== undefined) {
+      const tone = statusTone(route.payload.status);
       points.push({
         id: `ro-${route.id}`,
         label: route.payload.nome || "Rota",
-        caption: `Origem · ${route.payload.origem ?? ""}`,
+        caption: `Origem - ${route.payload.origem ?? ""}`,
         lat: oLat,
         lng: oLng,
         tone: "info",
+        meta: {
+          tipo: "Origem",
+          origem: route.payload.origem,
+          destino: route.payload.destino,
+          status: route.payload.status,
+        },
       });
       points.push({
         id: `rd-${route.id}`,
         label: route.payload.nome || "Rota",
-        caption: `Destino · ${route.payload.destino ?? ""}`,
+        caption: `Destino - ${route.payload.destino ?? ""}`,
         lat: dLat,
         lng: dLng,
-        tone: "primary",
+        tone,
+        meta: {
+          tipo: "Destino",
+          origem: route.payload.origem,
+          destino: route.payload.destino,
+          status: route.payload.status,
+        },
       });
       routes.push({
         id: `rr-${route.id}`,
+        label: route.payload.nome || "Rota",
+        tone,
+        status: route.payload.status,
+        description: `${route.payload.origem ?? ""} -> ${route.payload.destino ?? ""}`,
         points: [
           { lat: oLat, lng: oLng },
           { lat: dLat, lng: dLng },
@@ -257,10 +318,12 @@ export function useTrackingData() {
   });
 
   const stats = useMemo(() => {
-    const trans = cargas.filter(
-      (c) =>
-        (c.payload.status ?? "").toLowerCase().includes("trânsito") ||
-        (c.payload.status ?? "").toLowerCase().includes("transito"),
+    const trans = cargas.filter((c) =>
+      (c.payload.status ?? "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .includes("transito"),
     ).length;
     const entregues = cargas.filter((c) =>
       (c.payload.status ?? "").toLowerCase().includes("entregue"),
@@ -275,7 +338,7 @@ export function useTrackingData() {
 }
 
 export function TrackingMap({
-  height = "h-[420px]",
+  height = "h-[520px]",
   title = "Mapa de Rastreamento",
   subtitle = "Cargas, motoristas e bases ao vivo da operação Nery.",
 }: {
@@ -284,74 +347,35 @@ export function TrackingMap({
   subtitle?: string;
 }) {
   const { points, routes, stats, loading } = useTrackingData();
+  const mapStats = [
+    { label: "Em trânsito", value: stats.trans, tone: "primary" as const },
+    { label: "Entregues", value: stats.entregues, tone: "success" as const },
+    { label: "Atrasadas", value: stats.atrasadas, tone: "danger" as const },
+    { label: "Total de cargas", value: stats.total, tone: "neutral" as const },
+  ];
 
   return (
-    <section className="rounded-xl border border-border bg-card overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+    <section className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
       <div className="flex items-start justify-between gap-4 p-5 pb-4">
         <div>
-          <h2 className="font-semibold text-lg tracking-tight">{title}</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+          <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
         </div>
-        <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground bg-muted/60 border border-border rounded-md px-2 py-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-          {loading ? "Carregando…" : "Ao vivo"}
+        <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/60 px-2 py-1 text-[11px] text-muted-foreground">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
+          {loading ? "Carregando..." : "Ao vivo"}
         </span>
       </div>
-      <div className="grid grid-cols-12 gap-4 px-5 pb-5">
-        <div className="col-span-12 lg:col-span-9">
-          <CartoMap
-            region="brazil"
-            centerLabel="Operação Nery — Brasil"
-            points={points}
-            routes={routes}
-            showLegend
-            className={height}
-          />
-        </div>
-        <div className="col-span-12 lg:col-span-3 grid grid-cols-2 lg:grid-cols-1 gap-3">
-          <MiniStat icon={Truck} label="Em trânsito" value={stats.trans} tone="text-primary" />
-          <MiniStat
-            icon={CheckCircle2}
-            label="Entregues"
-            value={stats.entregues}
-            tone="text-success"
-          />
-          <MiniStat
-            icon={AlertTriangle}
-            label="Atrasadas"
-            value={stats.atrasadas}
-            tone="text-destructive"
-          />
-          <MiniStat
-            icon={Package}
-            label="Total de cargas"
-            value={stats.total}
-            tone="text-foreground"
-          />
-        </div>
+      <div className="px-5 pb-5">
+        <AgroMap
+          points={points}
+          routes={routes}
+          stats={mapStats}
+          className={height}
+          title="Rastreamento logístico"
+          subtitle="Cargas, rotas, motoristas, frota e bases com detalhes por clique."
+        />
       </div>
     </section>
-  );
-}
-
-function MiniStat({
-  icon: Icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: number;
-  tone: string;
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-background/60 p-3">
-      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-        <Icon className="w-3.5 h-3.5" />
-        {label}
-      </div>
-      <div className={`mt-1.5 text-2xl font-semibold tracking-tight ${tone}`}>{value}</div>
-    </div>
   );
 }

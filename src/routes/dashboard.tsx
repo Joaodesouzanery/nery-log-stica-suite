@@ -16,6 +16,7 @@ import {
   Calendar,
   CheckCircle2,
   Download,
+  FileText,
   Gauge,
   MessageCircle,
   Package,
@@ -27,6 +28,7 @@ import { StatCard } from "@/components/stat-card";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import { TrackingMap } from "@/components/tracking-map";
 import { PeriodPicker, defaultPeriod, type PeriodValue } from "@/components/period-picker";
+import { downloadPdf, makeReportPdf } from "@/lib/pdf-utils";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -102,6 +104,15 @@ const shipmentSeries = Array.from({ length: 16 }, (_, i) => ({
   previous: 250 + Math.round(Math.cos(i / 2) * 10 + i),
 }));
 
+const moduleOverview = [
+  { label: "Logística", value: "Cargas, frota, rotas e entregas", metric: "2.983 entregas" },
+  { label: "Financeiro", value: "Fluxo, custos e inadimplência", metric: "R$ 140 mil" },
+  { label: "Campo", value: "Talhões, manejo e safra", metric: "30 ha" },
+  { label: "Pecuária", value: "Animais, vacinas e produção", metric: "5 frentes" },
+  { label: "Sustentabilidade", value: "Certificação e carbono", metric: "5 controles" },
+  { label: "Inteligência", value: "Relatórios e alertas", metric: "4 análises" },
+];
+
 const statusStyle: Record<ShipmentRow["status"], string> = {
   Separando: "bg-warning/15 text-warning-foreground border-warning/30",
   "Em trânsito": "bg-primary/15 text-primary border-primary/30",
@@ -121,6 +132,34 @@ function downloadCsv(rows: ShipmentRow[]) {
   link.download = "cargas-nery.csv";
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function downloadDashboardPdf(rows: ShipmentRow[], demoMode: boolean) {
+  const doc = makeReportPdf({
+    title: "Relatório Consolidado Nery Agro",
+    subtitle: demoMode
+      ? "Visão demonstrativa consolidada dos módulos da plataforma."
+      : "Visão consolidada dos dados reais cadastrados na plataforma.",
+    metrics: [
+      { label: "Entregas no prazo", value: demoMode ? "98%" : "0%" },
+      { label: "Total de entregas", value: demoMode ? "2.983" : "0" },
+      { label: "Frota ativa", value: demoMode ? "203" : "0" },
+      { label: "Score do motorista", value: demoMode ? "95%" : "0%" },
+    ],
+    sections: [
+      {
+        title: "Módulos Consolidados",
+        head: ["Módulo", "Cobertura", "Indicador"],
+        body: moduleOverview.map((item) => [item.label, item.value, item.metric]),
+      },
+      {
+        title: "Cargas Recentes",
+        head: ["ID", "Motorista", "Destino", "Peso", "Status"],
+        body: rows.map((row) => [row.id, row.driver, row.dest, row.weight, row.status]),
+      },
+    ],
+  });
+  downloadPdf(doc, "nery-dashboard-consolidado.pdf");
 }
 
 function DashboardPage() {
@@ -161,11 +200,38 @@ function DashboardPage() {
             <Download className="w-4 h-4" />
             Exportar
           </button>
+          <button
+            onClick={() => downloadDashboardPdf(visibleRows, demoMode)}
+            className="h-10 px-4 rounded-lg border border-border bg-card text-sm flex items-center gap-2 hover:bg-muted transition-colors"
+          >
+            <FileText className="w-4 h-4" />
+            Exportar PDF
+          </button>
         </div>
       </div>
 
       {/* Big tracking map on top */}
       <TrackingMap />
+
+      <section className="bg-card border border-border rounded-xl p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+        <div className="mb-4">
+          <h2 className="font-semibold">Visão Consolidada dos Módulos</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            O Dashboard soma a operação inteira; cada módulo mantém sua própria Visão Geral.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          {moduleOverview.map((item) => (
+            <div key={item.label} className="rounded-lg border border-border bg-background/60 p-3">
+              <div className="text-xs text-muted-foreground">{item.label}</div>
+              <div className="mt-1 text-lg font-semibold">
+                {demoMode ? item.metric : "Dados reais"}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">{item.value}</div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* KPIs + Revenue */}
       <div className="grid grid-cols-12 gap-4">

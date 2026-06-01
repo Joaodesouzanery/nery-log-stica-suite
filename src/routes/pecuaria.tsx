@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BellRing,
   CalendarDays,
-  
   Download,
   Edit3,
   FileText,
@@ -12,6 +11,7 @@ import {
   Plus,
   QrCode,
   Scale,
+  Search,
   Sprout,
   Trash2,
 } from "lucide-react";
@@ -36,6 +36,13 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { PeriodPicker, defaultPeriod, type PeriodValue } from "@/components/period-picker";
+import { ImportRecordsButton } from "@/components/import-records-button";
+import {
+  downloadAnimalPdf,
+  downloadStoredAnimalPdf,
+  listAnimalPdfRecords,
+  saveAnimalPdfVersion,
+} from "@/lib/animal-pdfs";
 
 export const Route = createFileRoute("/pecuaria")({
   head: () => ({
@@ -266,8 +273,8 @@ function exportCsv(module: ModuleConfig, records: OperationRecord[]) {
 function PecuariaPage() {
   const { demoMode } = useDemoMode();
   const [period, setPeriod] = useState<PeriodValue>(defaultPeriod());
-  const [tab, setTab] = useState(modules[0].id);
-  const current = modules.find((module) => module.id === tab) ?? modules[0];
+  const [tab, setTab] = useState("visao-geral");
+  const current = modules.find((module) => module.id === tab);
 
   return (
     <div className="px-8 py-6 max-w-[1600px] mx-auto space-y-6">
@@ -283,9 +290,21 @@ function PecuariaPage() {
         <PeriodPicker value={period} onChange={setPeriod} />
       </div>
 
-      <PecuariaDashboard demoMode={demoMode} />
-
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <button
+          onClick={() => setTab("visao-geral")}
+          className={cn(
+            "min-h-16 rounded-lg border p-3 text-left text-sm font-medium transition-colors",
+            tab === "visao-geral"
+              ? "border-primary bg-primary/10 text-foreground"
+              : "border-border bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+          )}
+        >
+          <span className="flex items-start gap-2">
+            <ClipboardList className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <span className="line-clamp-2 leading-snug">Visão Geral</span>
+          </span>
+        </button>
         {modules.map((module) => {
           const active = module.id === tab;
           return (
@@ -308,7 +327,8 @@ function PecuariaPage() {
         })}
       </div>
 
-      <ModuleTab module={current} />
+      {tab === "visao-geral" && <PecuariaDashboard demoMode={demoMode} />}
+      {current && <ModuleTab module={current} />}
     </div>
   );
 }
@@ -374,6 +394,203 @@ function Kpi({
   );
 }
 
+function exportAnimalCsv(records: OperationRecord[]) {
+  const module = modules.find((item) => item.id === "animal");
+  if (!module) return;
+  const header = module.fields.map((field) => field.label);
+  const lines = records.map((recordItem) =>
+    module.fields.map((field) => recordItem.payload[field.key] ?? ""),
+  );
+  const csv = [header, ...lines]
+    .map((line) => line.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "nery-pecuaria-animais.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function AnimalPdfLibrary({
+  records,
+  demoMode,
+}: {
+  records: OperationRecord[];
+  demoMode: boolean;
+}) {
+  const [query, setQuery] = useState("");
+  const [progress, setProgress] = useState<number | null>(null);
+  const pdfQuery = useQuery({
+    queryKey: ["animal-pdfs"],
+    queryFn: listAnimalPdfRecords,
+    enabled: !demoMode,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const filteredAnimals = records.filter((recordItem) =>
+    [
+      recordItem.payload.identificacao,
+      recordItem.payload.especie,
+      recordItem.payload.raca,
+      recordItem.payload.status,
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(query.toLowerCase()),
+  );
+
+  const filteredPdfs = (pdfQuery.data ?? []).filter((item) =>
+    [
+      item.animal_identifier,
+      item.file_name,
+      item.payload_snapshot?.especie,
+      item.payload_snapshot?.raca,
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(query.toLowerCase()),
+  );
+
+  const bulkPdf = async () => {
+    if (!filteredAnimals.length) {
+      toast.info("Nenhum animal encontrado para exportar.");
+      return;
+    }
+    setProgress(0);
+    for (const [index, animal] of filteredAnimals.entries()) {
+      downloadAnimalPdf(animal);
+      setProgress(Math.round(((index + 1) / filteredAnimals.length) * 100));
+      await new Promise((resolve) => window.setTimeout(resolve, 180));
+    }
+    toast.success("Exportação em massa concluída.");
+    window.setTimeout(() => setProgress(null), 1200);
+  };
+
+  return (
+    <div className="mb-5 rounded-xl border border-border bg-background/60 p-4">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h4 className="font-semibold">Biblioteca de PDFs por Animal</h4>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Fichas versionadas por animal, busca, reemissão e exportação em massa.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={bulkPdf}
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-sm hover:bg-muted"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            Exportar PDFs
+          </button>
+          <button
+            onClick={() => exportAnimalCsv(filteredAnimals)}
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-sm hover:bg-muted"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Exportar CSV
+          </button>
+        </div>
+      </div>
+
+      <label className="mb-3 flex h-10 max-w-md items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm">
+        <Search className="h-4 w-4 text-muted-foreground" />
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Buscar por identificação, espécie, raça ou status..."
+          className="min-w-0 flex-1 bg-transparent outline-none"
+        />
+      </label>
+
+      {progress !== null && (
+        <div className="mb-3 h-2 overflow-hidden rounded-full bg-muted">
+          <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
+        </div>
+      )}
+
+      <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
+        <div className="rounded-lg border border-border bg-card p-3">
+          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Fichas atuais
+          </div>
+          <div className="max-h-56 space-y-2 overflow-y-auto">
+            {filteredAnimals.map((animal) => (
+              <div
+                key={animal.id}
+                className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm"
+              >
+                <div className="min-w-0">
+                  <div className="truncate font-medium">
+                    {animal.payload.identificacao || "Animal sem identificação"}
+                  </div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {[animal.payload.especie, animal.payload.raca, animal.payload.status]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </div>
+                </div>
+                <button
+                  onClick={() => downloadAnimalPdf(animal)}
+                  className="h-8 rounded-md border border-border px-2 text-xs hover:bg-muted"
+                >
+                  Baixar
+                </button>
+              </div>
+            ))}
+            {filteredAnimals.length === 0 && (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                Nenhum animal encontrado.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-border bg-card p-3">
+          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Histórico salvo
+          </div>
+          <div className="max-h-56 space-y-2 overflow-y-auto">
+            {demoMode && (
+              <div className="rounded-md border border-border px-3 py-3 text-xs text-muted-foreground">
+                No DEMO, os PDFs são gerados localmente. O histórico salvo aparece no modo real.
+              </div>
+            )}
+            {!demoMode &&
+              filteredPdfs.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">{item.animal_identifier}</div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      Versão {item.version} · {new Date(item.created_at).toLocaleString("pt-BR")}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => void downloadStoredAnimalPdf(item)}
+                    className="h-8 rounded-md border border-border px-2 text-xs hover:bg-muted"
+                  >
+                    Baixar
+                  </button>
+                </div>
+              ))}
+            {!demoMode && !pdfQuery.isLoading && filteredPdfs.length === 0 && (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                Nenhuma versão salva encontrada.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ModuleTab({ module }: { module: ModuleConfig }) {
   const { demoMode } = useDemoMode();
   const queryClient = useQueryClient();
@@ -397,23 +614,41 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["operation-records", AREA, module.id] });
     void queryClient.invalidateQueries({ queryKey: ["operation-records", AREA, "dashboard"] });
+    void queryClient.invalidateQueries({ queryKey: ["animal-pdfs"] });
+  };
+
+  const regenerateAnimalPdf = async (recordItem: OperationRecord) => {
+    if (demoMode || module.id !== "animal") return;
+    try {
+      await saveAnimalPdfVersion(recordItem);
+      toast.success("PDF do animal atualizado e salvo na biblioteca.");
+      void queryClient.invalidateQueries({ queryKey: ["animal-pdfs"] });
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? `Animal salvo, mas o PDF não foi salvo: ${error.message}`
+          : "Animal salvo, mas o PDF não foi salvo.",
+      );
+    }
   };
 
   const createMutation = useMutation({
     mutationFn: createOperationRecord,
-    onSuccess: () => {
+    onSuccess: async (recordItem) => {
       toast.success("Registro adicionado.");
       setOpen(false);
       invalidate();
+      await regenerateAnimalPdf(recordItem);
     },
     onError: (error) => toast.error(error.message),
   });
   const updateMutation = useMutation({
     mutationFn: updateOperationRecord,
-    onSuccess: () => {
+    onSuccess: async (recordItem) => {
       toast.success("Registro atualizado.");
       setOpen(false);
       invalidate();
+      await regenerateAnimalPdf(recordItem);
     },
     onError: (error) => toast.error(error.message),
   });
@@ -508,6 +743,15 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
     else createMutation.mutate({ area: AREA, module: module.id, payload });
   };
 
+  const importRows = async (rows: Record<string, string>[]) => {
+    if (demoMode) return toast.info("Desligue o modo DEMO para importar dados reais.");
+    for (const row of rows) {
+      const created = await createOperationRecord({ area: AREA, module: module.id, payload: row });
+      if (module.id === "animal") await saveAnimalPdfVersion(created);
+    }
+    invalidate();
+  };
+
   const loading = !demoMode && query.isLoading;
 
   return (
@@ -523,6 +767,7 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
           </div>
         </div>
         <div className="flex gap-2">
+          <ImportRecordsButton fields={module.fields} disabled={demoMode} onImport={importRows} />
           <button
             onClick={() =>
               records.length
@@ -543,6 +788,8 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
           </button>
         </div>
       </div>
+
+      {module.id === "animal" && <AnimalPdfLibrary records={records} demoMode={demoMode} />}
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

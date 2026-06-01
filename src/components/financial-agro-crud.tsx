@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ImportRecordsButton } from "@/components/import-records-button";
 
 type FieldConfig = {
   key: string;
@@ -915,6 +916,14 @@ function ModuleSection({
     createCostMutation.mutate({ module: "custos", payload: costPayload });
   };
 
+  const importRows = async (rows: Record<string, string>[]) => {
+    if (demoMode) return toast.info("Desligue o modo DEMO para importar dados reais.");
+    for (const row of rows) {
+      await createFinancialRecord({ module: module.id, payload: row });
+    }
+    void queryClient.invalidateQueries({ queryKey: ["financial-records", module.id] });
+  };
+
   return (
     <section id={module.id} className="scroll-mt-20 rounded-lg border border-border bg-card p-5">
       <div className="mb-4 flex items-start justify-between gap-4">
@@ -929,15 +938,18 @@ function ModuleSection({
             </div>
           </div>
         </div>
-        <button
-          onClick={beginCreate}
-          className="h-9 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground"
-        >
-          <span className="inline-flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Adicionar
-          </span>
-        </button>
+        <div className="flex gap-2">
+          <ImportRecordsButton fields={module.fields} disabled={demoMode} onImport={importRows} />
+          <button
+            onClick={beginCreate}
+            className="h-9 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground"
+          >
+            <span className="inline-flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Adicionar
+            </span>
+          </button>
+        </div>
       </div>
 
       <div className="mb-4 grid gap-3 md:grid-cols-3">

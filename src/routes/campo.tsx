@@ -32,6 +32,7 @@ import {
   listFieldRecords,
   updateFieldRecord,
 } from "@/lib/supabase-field";
+import { ImportRecordsButton } from "@/components/import-records-button";
 import { isSupabaseConfigured } from "@/lib/supabase-financial";
 import {
   Dialog,
@@ -881,6 +882,14 @@ function CampoModuleSection({
     createMutation.mutate({ module: module.id, payload });
   };
 
+  const importRows = async (rows: Record<string, string>[]) => {
+    if (demoMode) return toast.info("Desligue o modo DEMO para importar dados reais.");
+    for (const row of rows) {
+      await createFieldRecord({ module: module.id, payload: row });
+    }
+    void queryClient.invalidateQueries({ queryKey: ["field-records", module.id] });
+  };
+
   return (
     <section id={module.id} className="scroll-mt-20 rounded-lg border border-border bg-card p-5">
       <div className="mb-4 flex items-start justify-between gap-4">
@@ -893,13 +902,16 @@ function CampoModuleSection({
             <p className="text-xs text-muted-foreground">{module.description}</p>
           </div>
         </div>
-        <button
-          onClick={beginCreate}
-          className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground"
-        >
-          <Plus className="h-4 w-4" />
-          Adicionar
-        </button>
+        <div className="flex gap-2">
+          <ImportRecordsButton fields={module.fields} disabled={demoMode} onImport={importRows} />
+          <button
+            onClick={beginCreate}
+            className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground"
+          >
+            <Plus className="h-4 w-4" />
+            Adicionar
+          </button>
+        </div>
       </div>
 
       <div className="mb-4 grid gap-3 md:grid-cols-3">

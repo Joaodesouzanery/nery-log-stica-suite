@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { PeriodPicker, defaultPeriod, type PeriodValue } from "@/components/period-picker";
+import { ImportRecordsButton } from "@/components/import-records-button";
 
 export type OperationFieldConfig = {
   key: string;
@@ -95,8 +96,8 @@ export function OperationAreaPage({
 }: OperationAreaPageProps) {
   const { demoMode } = useDemoMode();
   const [period, setPeriod] = useState<PeriodValue>(defaultPeriod());
-  const [tab, setTab] = useState(modules[0].id);
-  const current = modules.find((module) => module.id === tab) ?? modules[0];
+  const [tab, setTab] = useState("visao-geral");
+  const current = modules.find((module) => module.id === tab);
 
   const queries = useQueries({
     queries: modules.map((module) => ({
@@ -154,6 +155,17 @@ export function OperationAreaPage({
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        <button
+          onClick={() => setTab("visao-geral")}
+          className={cn(
+            "min-h-16 rounded-lg border p-3 text-left text-sm font-medium transition-colors",
+            tab === "visao-geral"
+              ? "border-primary bg-primary/10 text-foreground"
+              : "border-border bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+          )}
+        >
+          <span className="line-clamp-2 leading-snug">Visão Geral</span>
+        </button>
         {modules.map((module) => {
           const active = tab === module.id;
           return (
@@ -176,13 +188,80 @@ export function OperationAreaPage({
         })}
       </div>
 
-      <ModuleTab
-        area={area}
-        module={current}
-        records={recordsByModule[current.id] ?? []}
-        addon={renderModuleAddon?.(current, recordsByModule[current.id] ?? [])}
-      />
+      {current ? (
+        <ModuleTab
+          area={area}
+          module={current}
+          records={recordsByModule[current.id] ?? []}
+          addon={renderModuleAddon?.(current, recordsByModule[current.id] ?? [])}
+        />
+      ) : (
+        <AreaOverview modules={modules} recordsByModule={recordsByModule} onSelect={setTab} />
+      )}
     </div>
+  );
+}
+
+function AreaOverview({
+  modules,
+  recordsByModule,
+  onSelect,
+}: {
+  modules: OperationModuleConfig[];
+  recordsByModule: RecordsByModule;
+  onSelect: (moduleId: string) => void;
+}) {
+  return (
+    <section className="rounded-xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      <div className="mb-4">
+        <h3 className="font-semibold">Visão Geral do Módulo</h3>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Resumo das abas, registros e pontos de atenção deste módulo.
+        </p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {modules.map((module) => {
+          const records = recordsByModule[module.id] ?? [];
+          const alerts = records.filter((recordItem) =>
+            statusNeedsAttention(recordItem.payload.status),
+          ).length;
+          const last = records[0]?.payload[module.fields[0]?.key] ?? "Sem registros";
+          return (
+            <button
+              key={module.id}
+              onClick={() => onSelect(module.id)}
+              className="rounded-lg border border-border bg-background/60 p-4 text-left transition-colors hover:bg-muted/50"
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <module.icon className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold">{module.label}</div>
+                  <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                    {module.description}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+                <div>
+                  <div className="text-muted-foreground">Registros</div>
+                  <div className="mt-1 text-lg font-semibold">{records.length}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Alertas</div>
+                  <div className="mt-1 text-lg font-semibold text-warning-foreground">{alerts}</div>
+                </div>
+                <div className="min-w-0">
+                  <div className="text-muted-foreground">Último</div>
+                  <div className="mt-1 truncate font-medium">{last}</div>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -280,6 +359,15 @@ function ModuleTab({
     else createMutation.mutate({ area, module: module.id, payload });
   };
 
+  const importRows = async (rows: Record<string, string>[]) => {
+    if (demoMode) return toast.info("Desligue o modo DEMO para importar dados reais.");
+    for (const row of rows) {
+      await createOperationRecord({ area, module: module.id, payload: row });
+    }
+    toast.success(`${rows.length} registro(s) importado(s).`);
+    invalidate();
+  };
+
   return (
     <section className="rounded-xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
       <div className="mb-4 flex items-start justify-between gap-4">
@@ -293,6 +381,12 @@ function ModuleTab({
           </div>
         </div>
         <div className="flex gap-2">
+          <ImportRecordsButton
+            fields={module.fields}
+            disabled={demoMode}
+            onImport={importRows}
+            className="h-9 rounded-lg border border-border px-3 text-sm"
+          />
           <button
             onClick={() =>
               records.length
