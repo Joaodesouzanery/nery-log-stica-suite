@@ -282,6 +282,114 @@ function LandingPage() {
         </div>
       </section>
 
+      {/* HOW IT WORKS */}
+      <section className="bg-muted/30 px-6 py-16 sm:px-8">
+        <div className="mx-auto max-w-[1600px]">
+          <div className="mb-10 max-w-2xl">
+            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+              Como a plataforma funciona
+            </h2>
+            <p className="mt-3 text-base text-muted-foreground">
+              Em três passos a fazenda sai do papel e da planilha para uma operação conectada.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[
+              {
+                step: "1",
+                title: "Cadastre a operação",
+                text: "Talhões, frota, animais, clientes, contratos e custos fixos. Cada aba tem cadastro, edição e exclusão.",
+              },
+              {
+                step: "2",
+                title: "Registre o dia a dia",
+                text: "Plantio, colheita, vacinas, ordenha, expedição, entregas e recebíveis com poucos cliques, no campo ou no escritório.",
+              },
+              {
+                step: "3",
+                title: "Decida com dados",
+                text: "Veja indicadores em tempo real por período, exporte relatórios e gere documentos como a ficha em PDF de cada animal.",
+              },
+            ].map((s) => (
+              <div
+                key={s.step}
+                className="rounded-xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+              >
+                <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+                  {s.step}
+                </div>
+                <h3 className="text-base font-semibold">{s.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{s.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* METRICS */}
+      <section className="px-6 py-16 sm:px-8">
+        <div className="mx-auto grid max-w-[1600px] gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { value: "6", label: "Módulos integrados" },
+            { value: "40+", label: "Abas operacionais" },
+            { value: "100%", label: "CRUD em cada aba" },
+            { value: "1", label: "Única fonte de dados" },
+          ].map((m) => (
+            <div
+              key={m.label}
+              className="rounded-xl border border-border bg-card p-6 text-center shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+            >
+              <div className="text-3xl font-semibold tracking-tight text-primary">{m.value}</div>
+              <div className="mt-2 text-sm text-muted-foreground">{m.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="bg-muted/30 px-6 py-16 sm:px-8">
+        <div className="mx-auto max-w-[1100px]">
+          <h2 className="mb-8 text-3xl font-semibold tracking-tight sm:text-4xl">
+            Perguntas frequentes
+          </h2>
+          <div className="space-y-3">
+            {[
+              {
+                q: "Preciso instalar algo?",
+                a: "Não. A plataforma roda no navegador, no computador ou no celular, com sincronização em tempo real.",
+              },
+              {
+                q: "Posso testar sem cadastrar dados reais?",
+                a: "Sim. O modo DEMO mostra exemplos protegidos contra edição, ideal para conhecer cada módulo antes de migrar.",
+              },
+              {
+                q: "Os dados ficam guardados?",
+                a: "Tudo é gravado em banco de dados gerenciado, com backup automático e regras de segurança por tabela.",
+              },
+              {
+                q: "Consigo gerar documentos?",
+                a: "Sim. Por exemplo, no módulo Pecuária você gera um PDF da ficha individual de cada animal, salvo junto à identificação dele.",
+              },
+              {
+                q: "Funciona offline?",
+                a: "A leitura básica continua disponível enquanto há cache local; o envio sincroniza assim que a conexão volta.",
+              },
+            ].map((f) => (
+              <details
+                key={f.q}
+                className="group rounded-xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+              >
+                <summary className="cursor-pointer list-none text-base font-semibold flex items-center justify-between">
+                  {f.q}
+                  <span className="text-primary transition group-open:rotate-45">+</span>
+                </summary>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="px-6 pb-20 sm:px-8">
         <div className="mx-auto max-w-[1600px] rounded-2xl border border-border bg-gradient-to-br from-primary/10 via-card to-card p-10 text-center shadow-[0_10px_30px_rgba(0,0,0,0.06)]">
