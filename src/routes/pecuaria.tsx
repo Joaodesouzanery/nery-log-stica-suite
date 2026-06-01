@@ -7,6 +7,8 @@ import {
   ClipboardList,
   Download,
   Edit3,
+  FileText,
+  Loader2,
   Plus,
   QrCode,
   Scale,
@@ -14,6 +16,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import jsPDF from "jspdf";
+import { supabase } from "@/integrations/supabase/client";
 import {
   createOperationRecord,
   deleteOperationRecord,
