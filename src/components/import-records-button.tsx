@@ -110,7 +110,7 @@ export function ImportRecordsButton({
       lowerName.endsWith(".csv") || file.type.includes("csv")
         ? parseCsv(await file.text())
         : await readXlsxFile(file);
-    const rows = rowsToPayloads(matrix, fields, aliases);
+    const rows = rowsToPayloads(matrix as unknown[][], fields, aliases);
 
     if (!rows.length) {
       toast.info("Nenhuma linha válida encontrada na planilha.");
