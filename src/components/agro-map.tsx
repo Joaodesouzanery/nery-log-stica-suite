@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
 import maplibregl, {
-  type GeoJSONSource,
   type LngLatBoundsLike,
   type Map as MapLibreMap,
 } from "maplibre-gl";
@@ -162,99 +161,107 @@ export function AgroMap({
       map.remove();
       mapRef.current = null;
     };
-  }, [center, zoom]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    let cancelled = false;
 
     const render = () => {
-      markersRef.current.forEach((marker) => marker.remove());
-      markersRef.current = [];
+      if (cancelled || mapRef.current !== map) return;
+      try {
+        markersRef.current.forEach((marker) => marker.remove());
+        markersRef.current = [];
 
-      if (map.getLayer("route-lines")) map.removeLayer("route-lines");
-      if (map.getSource("routes")) map.removeSource("routes");
+        if (map.getLayer("route-lines")) map.removeLayer("route-lines");
+        if (map.getSource("routes")) map.removeSource("routes");
 
-      if (routeCollection.features.length) {
-        map.addSource("routes", { type: "geojson", data: routeCollection });
-        map.addLayer({
-          id: "route-lines",
-          type: "line",
-          source: "routes",
-          paint: {
-            "line-color": [
-              "match",
-              ["get", "tone"],
-              "success",
-              toneColor.success,
-              "warning",
-              toneColor.warning,
-              "danger",
-              toneColor.danger,
-              "info",
-              toneColor.info,
-              toneColor.primary,
-            ],
-            "line-width": 4,
-            "line-opacity": 0.85,
-          },
-        });
+        if (routeCollection.features.length) {
+          map.addSource("routes", { type: "geojson", data: routeCollection });
+          map.addLayer({
+            id: "route-lines",
+            type: "line",
+            source: "routes",
+            paint: {
+              "line-color": [
+                "match",
+                ["get", "tone"],
+                "success",
+                toneColor.success,
+                "warning",
+                toneColor.warning,
+                "danger",
+                toneColor.danger,
+                "info",
+                toneColor.info,
+                toneColor.primary,
+              ],
+              "line-width": 4,
+              "line-opacity": 0.85,
+            },
+          });
 
-        map.on("click", "route-lines", (event) => {
-          const feature = event.features?.[0];
-          if (!feature) return;
-          new maplibregl.Popup({ closeButton: true, closeOnClick: true })
-            .setLngLat(event.lngLat)
-            .setHTML(
-              popupHtml(
-                String(feature.properties?.label ?? "Rota"),
-                String(feature.properties?.description ?? ""),
+          map.on("click", "route-lines", (event) => {
+            const feature = event.features?.[0];
+            if (!feature) return;
+            new maplibregl.Popup({ closeButton: true, closeOnClick: true })
+              .setLngLat(event.lngLat)
+              .setHTML(
+                popupHtml(
+                  String(feature.properties?.label ?? "Rota"),
+                  String(feature.properties?.description ?? ""),
+                ),
+              )
+              .addTo(map);
+          });
+        }
+
+        const bounds = new maplibregl.LngLatBounds();
+        points.forEach((point) => {
+          const coord = coordinate(point);
+          if (!coord) return;
+          const tone = point.tone ?? "neutral";
+          const markerEl = document.createElement("button");
+          markerEl.type = "button";
+          markerEl.className = `group flex items-center gap-1 rounded border px-1.5 py-1 text-[10px] font-semibold shadow-lg shadow-black/20 ${toneClass[tone]}`;
+          const dot = document.createElement("span");
+          dot.style.width = "7px";
+          dot.style.height = "7px";
+          dot.style.borderRadius = "999px";
+          dot.style.background = "currentColor";
+          dot.style.boxShadow = "0 0 0 2px rgba(255,255,255,.45)";
+          const label = document.createElement("span");
+          label.textContent = point.label;
+          markerEl.append(dot, label);
+
+          const marker = new maplibregl.Marker({ element: markerEl, anchor: "bottom" })
+            .setLngLat(coord)
+            .setPopup(
+              new maplibregl.Popup({ offset: 18 }).setHTML(
+                popupHtml(point.label, point.caption ?? point.description, point.meta),
               ),
             )
             .addTo(map);
+          markersRef.current.push(marker);
+          bounds.extend(coord);
         });
-      }
 
-      const bounds = new maplibregl.LngLatBounds();
-      points.forEach((point) => {
-        const coord = coordinate(point);
-        if (!coord) return;
-        const tone = point.tone ?? "neutral";
-        const markerEl = document.createElement("button");
-        markerEl.type = "button";
-        markerEl.className = `group flex items-center gap-1 rounded border px-1.5 py-1 text-[10px] font-semibold shadow-lg shadow-black/20 ${toneClass[tone]}`;
-        const dot = document.createElement("span");
-        dot.style.width = "7px";
-        dot.style.height = "7px";
-        dot.style.borderRadius = "999px";
-        dot.style.background = "currentColor";
-        dot.style.boxShadow = "0 0 0 2px rgba(255,255,255,.45)";
-        const label = document.createElement("span");
-        label.textContent = point.label;
-        markerEl.append(dot, label);
-
-        const marker = new maplibregl.Marker({ element: markerEl, anchor: "bottom" })
-          .setLngLat(coord)
-          .setPopup(
-            new maplibregl.Popup({ offset: 18 }).setHTML(
-              popupHtml(point.label, point.caption ?? point.description, point.meta),
-            ),
-          )
-          .addTo(map);
-        markersRef.current.push(marker);
-        bounds.extend(coord);
-      });
-
-      routeCollection.features.forEach((feature) => {
-        feature.geometry.coordinates.forEach((coord) => bounds.extend(coord));
-      });
-
-      if (!bounds.isEmpty()) {
-        map.fitBounds(bounds as LngLatBoundsLike, {
-          padding: { top: 92, right: 56, bottom: 56, left: 56 },
-          maxZoom: 9,
-          duration: 700,
+        routeCollection.features.forEach((feature) => {
+          feature.geometry.coordinates.forEach((coord) => bounds.extend(coord));
         });
+
+        if (!bounds.isEmpty()) {
+          map.fitBounds(bounds as LngLatBoundsLike, {
+            padding: { top: 92, right: 56, bottom: 56, left: 56 },
+            maxZoom: 9,
+            duration: 700,
+          });
+        }
+      } catch (err) {
+        // Mapa pode ter sido removido entre o agendamento e a execução
+        console.warn("agro-map render skipped:", err);
       }
     };
 
@@ -262,8 +269,7 @@ export function AgroMap({
     else map.once("load", render);
 
     return () => {
-      const source = map.getSource("routes") as GeoJSONSource | undefined;
-      if (source) source.setData({ type: "FeatureCollection", features: [] });
+      cancelled = true;
     };
   }, [points, routeCollection]);
 
