@@ -20,7 +20,7 @@ type ImportRecordsButtonProps = {
   fields: ImportField[];
   disabled?: boolean;
   className?: string;
-  onImport: (rows: Record<string, string>[]) => Promise<void> | void;
+  onImport: (rows: Record<string, string>[]) => unknown | Promise<unknown>;
 };
 
 function normalize(value: string) {
