@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
 import maplibregl, {
-  type GeoJSONSource,
   type LngLatBoundsLike,
   type Map as MapLibreMap,
 } from "maplibre-gl";
