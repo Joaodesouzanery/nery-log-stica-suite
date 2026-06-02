@@ -2,8 +2,10 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import {
   ArrowRight,
   BarChart3,
+  Calculator,
   CheckCircle2,
   ClipboardList,
+  LayoutDashboard,
   Leaf,
   MapPinned,
   ShieldCheck,
@@ -33,6 +35,11 @@ export const Route = createFileRoute("/")({
 });
 
 const modules = [
+  {
+    icon: LayoutDashboard,
+    title: "Torre de Controle",
+    text: "Mapa global, alertas, OTIF, capacidade, ordens e rede integrada.",
+  },
   { icon: MapPinned, title: "Campo", text: "Talhões, plantio, manejo, pragas, solo e safra." },
   { icon: Truck, title: "Logística", text: "Cargas, rotas, expedição, fretes, cestas e entregas." },
   {
@@ -54,6 +61,11 @@ const modules = [
     icon: ClipboardList,
     title: "Inteligência",
     text: "Relatórios, gráficos, perdas e alertas de preços.",
+  },
+  {
+    icon: Calculator,
+    title: "Otimização de COGS",
+    text: "Custo por etapa, SKU, rota, cenário, fonte de custo e margem.",
   },
 ];
 
@@ -81,7 +93,7 @@ const faqs = [
   ["O mapa usa token externo?", "Não. A navegação usa MapLibre com tiles públicos OSM."],
   [
     "Consigo gerar relatórios?",
-    "Sim. Há CSV por aba, PDF consolidado no Dashboard e fichas em PDF na Pecuária.",
+    "Sim. Há CSV por aba, PDF consolidado na Torre de Controle e fichas em PDF na Pecuária.",
   ],
   [
     "A plataforma atende fazenda pequena?",
@@ -90,6 +102,10 @@ const faqs = [
   [
     "CEASA/CNA já integra automaticamente?",
     "Nesta versão, os alertas de preço são configuráveis manualmente e preparados para integração futura.",
+  ],
+  [
+    "O COGS conversa com os outros módulos?",
+    "Sim. Ele usa custos do Financeiro, fretes da Logística, insumos do Campo, perdas da Inteligência e registros operacionais para calcular custo e margem.",
   ],
 ];
 
@@ -127,7 +143,7 @@ function LandingPage() {
               </a>
             </nav>
             <Link
-              to="/dashboard"
+              to="/torre-de-controle"
               className="inline-flex h-9 items-center gap-2 rounded-md bg-white px-3 text-xs font-semibold text-slate-950 transition hover:bg-white/90"
             >
               Acessar
@@ -149,7 +165,7 @@ function LandingPage() {
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Link
-                  to="/dashboard"
+                  to="/torre-de-controle"
                   className="inline-flex h-12 items-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-lg shadow-black/25 transition hover:bg-primary/90"
                 >
                   Acessar
@@ -221,8 +237,8 @@ function LandingPage() {
             <h2 className="text-3xl font-semibold tracking-tight">Como funciona</h2>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
               A plataforma organiza a rotina por módulos. Cada área tem sua Visão Geral, tabelas com
-              CRUD, importação de planilhas, exportação e indicadores próprios. O Dashboard soma
-              tudo.
+              CRUD, importação de planilhas, exportação e indicadores próprios. A Torre de Controle
+              soma tudo.
             </p>
           </div>
           <div className="mt-8 grid gap-3 md:grid-cols-3">
@@ -257,7 +273,7 @@ function LandingPage() {
               </p>
             </div>
             <Link
-              to="/dashboard"
+              to="/torre-de-controle"
               className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground"
             >
               Acessar sistema
@@ -319,7 +335,7 @@ function LandingPage() {
           <h2 className="text-3xl font-semibold tracking-tight">Relatórios e exportações</h2>
           <div className="mt-6 grid gap-3 md:grid-cols-4">
             {[
-              "PDF consolidado do Dashboard",
+              "PDF consolidado da Torre de Controle",
               "Fichas de animais versionadas",
               "CSV por aba operacional",
               "Importação CSV/XLSX por módulo",
@@ -354,11 +370,11 @@ function LandingPage() {
           <div>
             <h2 className="text-2xl font-semibold tracking-tight">Entre no sistema da fazenda</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Acesse o Dashboard e veja a operação consolidada.
+              Acesse a Torre de Controle e veja a operação consolidada.
             </p>
           </div>
           <Link
-            to="/dashboard"
+            to="/torre-de-controle"
             className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground"
           >
             Acessar

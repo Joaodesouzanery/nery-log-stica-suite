@@ -686,7 +686,7 @@ function FinancialDashboard({
     <section className="rounded-lg border border-border bg-card p-5">
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight">Dashboard Financeiro</h2>
+          <h2 className="text-xl font-semibold tracking-tight">Visão Geral Financeira</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {demoMode
               ? "Resumo demonstrativo do financeiro agro."

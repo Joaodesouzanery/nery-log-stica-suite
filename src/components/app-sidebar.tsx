@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   BarChart3,
+  Calculator,
   Leaf,
   Wallet,
   Truck,
@@ -21,13 +22,14 @@ import { Switch } from "@/components/ui/switch";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 
 const generalItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Torre de Controle", url: "/torre-de-controle", icon: LayoutDashboard },
   { title: "Logística e Distribuição", url: "/logistica", icon: Truck },
   { title: "Financeiro", url: "/financeiro", icon: Wallet },
   { title: "Campo", url: "/campo", icon: Sprout },
   { title: "Pecuária / Animais", url: "/pecuaria", icon: QrCode },
   { title: "Sustentabilidade", url: "/sustentabilidade", icon: Leaf },
   { title: "Inteligência", url: "/inteligencia", icon: BarChart3 },
+  { title: "Otimização de COGS", url: "/otimizacao-cogs", icon: Calculator },
 ];
 
 const supportItems = [
@@ -41,7 +43,13 @@ export function AppSidebar() {
   const { demoMode, setDemoMode } = useDemoMode();
   const [collapsed, setCollapsed] = useState(false);
 
-  const isActive = (url: string) => (url === "/" ? path === "/" : path.startsWith(url));
+  const isActive = (url: string) => {
+    if (url === "/torre-de-controle") {
+      return path.startsWith("/torre-de-controle") || path.startsWith("/dashboard");
+    }
+
+    return url === "/" ? path === "/" : path.startsWith(url);
+  };
 
   return (
     <aside
@@ -58,7 +66,7 @@ export function AppSidebar() {
         {!collapsed && (
           <div className="flex-1 min-w-0 leading-tight">
             <div className="font-semibold text-[15px] tracking-tight text-foreground">Nery</div>
-            <div className="text-[11px] text-muted-foreground">Logística</div>
+            <div className="text-[11px] text-muted-foreground">Agro</div>
           </div>
         )}
         {!collapsed && (

@@ -9,8 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TorreDeControleRouteImport } from './routes/torre-de-controle'
 import { Route as SustentabilidadeRouteImport } from './routes/sustentabilidade'
 import { Route as PecuariaRouteImport } from './routes/pecuaria'
+import { Route as OtimizacaoCogsRouteImport } from './routes/otimizacao-cogs'
 import { Route as LogisticaRouteImport } from './routes/logistica'
 import { Route as InteligenciaRouteImport } from './routes/inteligencia'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
@@ -18,6 +20,11 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CampoRouteImport } from './routes/campo'
 import { Route as IndexRouteImport } from './routes/index'
 
+const TorreDeControleRoute = TorreDeControleRouteImport.update({
+  id: '/torre-de-controle',
+  path: '/torre-de-controle',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SustentabilidadeRoute = SustentabilidadeRouteImport.update({
   id: '/sustentabilidade',
   path: '/sustentabilidade',
@@ -26,6 +33,11 @@ const SustentabilidadeRoute = SustentabilidadeRouteImport.update({
 const PecuariaRoute = PecuariaRouteImport.update({
   id: '/pecuaria',
   path: '/pecuaria',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OtimizacaoCogsRoute = OtimizacaoCogsRouteImport.update({
+  id: '/otimizacao-cogs',
+  path: '/otimizacao-cogs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LogisticaRoute = LogisticaRouteImport.update({
@@ -66,8 +78,10 @@ export interface FileRoutesByFullPath {
   '/financeiro': typeof FinanceiroRoute
   '/inteligencia': typeof InteligenciaRoute
   '/logistica': typeof LogisticaRoute
+  '/otimizacao-cogs': typeof OtimizacaoCogsRoute
   '/pecuaria': typeof PecuariaRoute
   '/sustentabilidade': typeof SustentabilidadeRoute
+  '/torre-de-controle': typeof TorreDeControleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -76,8 +90,10 @@ export interface FileRoutesByTo {
   '/financeiro': typeof FinanceiroRoute
   '/inteligencia': typeof InteligenciaRoute
   '/logistica': typeof LogisticaRoute
+  '/otimizacao-cogs': typeof OtimizacaoCogsRoute
   '/pecuaria': typeof PecuariaRoute
   '/sustentabilidade': typeof SustentabilidadeRoute
+  '/torre-de-controle': typeof TorreDeControleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -87,8 +103,10 @@ export interface FileRoutesById {
   '/financeiro': typeof FinanceiroRoute
   '/inteligencia': typeof InteligenciaRoute
   '/logistica': typeof LogisticaRoute
+  '/otimizacao-cogs': typeof OtimizacaoCogsRoute
   '/pecuaria': typeof PecuariaRoute
   '/sustentabilidade': typeof SustentabilidadeRoute
+  '/torre-de-controle': typeof TorreDeControleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -99,8 +117,10 @@ export interface FileRouteTypes {
     | '/financeiro'
     | '/inteligencia'
     | '/logistica'
+    | '/otimizacao-cogs'
     | '/pecuaria'
     | '/sustentabilidade'
+    | '/torre-de-controle'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -109,8 +129,10 @@ export interface FileRouteTypes {
     | '/financeiro'
     | '/inteligencia'
     | '/logistica'
+    | '/otimizacao-cogs'
     | '/pecuaria'
     | '/sustentabilidade'
+    | '/torre-de-controle'
   id:
     | '__root__'
     | '/'
@@ -119,8 +141,10 @@ export interface FileRouteTypes {
     | '/financeiro'
     | '/inteligencia'
     | '/logistica'
+    | '/otimizacao-cogs'
     | '/pecuaria'
     | '/sustentabilidade'
+    | '/torre-de-controle'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -130,12 +154,21 @@ export interface RootRouteChildren {
   FinanceiroRoute: typeof FinanceiroRoute
   InteligenciaRoute: typeof InteligenciaRoute
   LogisticaRoute: typeof LogisticaRoute
+  OtimizacaoCogsRoute: typeof OtimizacaoCogsRoute
   PecuariaRoute: typeof PecuariaRoute
   SustentabilidadeRoute: typeof SustentabilidadeRoute
+  TorreDeControleRoute: typeof TorreDeControleRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/torre-de-controle': {
+      id: '/torre-de-controle'
+      path: '/torre-de-controle'
+      fullPath: '/torre-de-controle'
+      preLoaderRoute: typeof TorreDeControleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sustentabilidade': {
       id: '/sustentabilidade'
       path: '/sustentabilidade'
@@ -148,6 +181,13 @@ declare module '@tanstack/react-router' {
       path: '/pecuaria'
       fullPath: '/pecuaria'
       preLoaderRoute: typeof PecuariaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/otimizacao-cogs': {
+      id: '/otimizacao-cogs'
+      path: '/otimizacao-cogs'
+      fullPath: '/otimizacao-cogs'
+      preLoaderRoute: typeof OtimizacaoCogsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/logistica': {
@@ -202,8 +242,10 @@ const rootRouteChildren: RootRouteChildren = {
   FinanceiroRoute: FinanceiroRoute,
   InteligenciaRoute: InteligenciaRoute,
   LogisticaRoute: LogisticaRoute,
+  OtimizacaoCogsRoute: OtimizacaoCogsRoute,
   PecuariaRoute: PecuariaRoute,
   SustentabilidadeRoute: SustentabilidadeRoute,
+  TorreDeControleRoute: TorreDeControleRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

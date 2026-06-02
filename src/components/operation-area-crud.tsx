@@ -47,6 +47,7 @@ type OperationAreaPageProps = {
   description: string;
   modules: OperationModuleConfig[];
   demoByModule: RecordsByModule;
+  renderOverviewAddon?: (recordsByModule: RecordsByModule) => ReactNode;
   renderModuleAddon?: (module: OperationModuleConfig, records: OperationRecord[]) => ReactNode;
 };
 
@@ -92,6 +93,7 @@ export function OperationAreaPage({
   description,
   modules,
   demoByModule,
+  renderOverviewAddon,
   renderModuleAddon,
 }: OperationAreaPageProps) {
   const { demoMode } = useDemoMode();
@@ -196,7 +198,12 @@ export function OperationAreaPage({
           addon={renderModuleAddon?.(current, recordsByModule[current.id] ?? [])}
         />
       ) : (
-        <AreaOverview modules={modules} recordsByModule={recordsByModule} onSelect={setTab} />
+        <AreaOverview
+          modules={modules}
+          recordsByModule={recordsByModule}
+          onSelect={setTab}
+          addon={renderOverviewAddon?.(recordsByModule)}
+        />
       )}
     </div>
   );
@@ -206,10 +213,12 @@ function AreaOverview({
   modules,
   recordsByModule,
   onSelect,
+  addon,
 }: {
   modules: OperationModuleConfig[];
   recordsByModule: RecordsByModule;
   onSelect: (moduleId: string) => void;
+  addon?: ReactNode;
 }) {
   return (
     <section className="rounded-xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
@@ -219,6 +228,7 @@ function AreaOverview({
           Resumo das abas, registros e pontos de atenção deste módulo.
         </p>
       </div>
+      {addon && <div className="mb-5">{addon}</div>}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {modules.map((module) => {
           const records = recordsByModule[module.id] ?? [];

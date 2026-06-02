@@ -19,6 +19,14 @@ export async function listFieldRecords(module: string): Promise<FieldRecord[]> {
   return (data ?? []) as FieldRecord[];
 }
 
+export async function listAllFieldRecords(): Promise<FieldRecord[]> {
+  const { data, error } = await fieldRecords()
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as FieldRecord[];
+}
+
 export async function createFieldRecord(input: {
   module: string;
   payload: Record<string, string>;
