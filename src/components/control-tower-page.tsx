@@ -23,10 +23,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { toast } from "sonner";
 import { AgroMap } from "@/components/agro-map";
 import { PeriodPicker, defaultPeriod, type PeriodValue } from "@/components/period-picker";
-import { downloadPdf, makeReportPdf } from "@/lib/pdf-utils";
+import { downloadPdf } from "@/lib/pdf-utils";
 import {
   buildControlTowerModel,
   type ControlTowerModel,
@@ -77,37 +79,165 @@ function exportCsv(model: ControlTowerModel) {
   URL.revokeObjectURL(url);
 }
 
-function exportPdf(model: ControlTowerModel, demoMode: boolean) {
-  const doc = makeReportPdf({
-    title: "Relatório - Torre de Controle Nery Agro",
-    subtitle: demoMode
-      ? "Visão demonstrativa conectada dos módulos."
-      : "Visão real conectada dos módulos da plataforma.",
-    metrics: [
+async function exportPdf(model: ControlTowerModel, demoMode: boolean, period: PeriodValue) {
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const generatedAt = new Date().toLocaleString("pt-BR");
+  const mapSnapshot = await captureMapSnapshot();
+
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, pageWidth, 118, "F");
+  doc.setFillColor(20, 83, 45);
+  doc.rect(0, 0, 12, pageHeight, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(22);
+  doc.text("Torre de Controle Nery Agro", 40, 44);
+  doc.setFontSize(10);
+  doc.text(
+    `${demoMode ? "Dados demonstrativos" : "Dados reais"} · ${period.label} · Gerado em ${generatedAt}`,
+    40,
+    66,
+  );
+  doc.setDrawColor(76, 111, 87);
+  doc.line(40, 88, pageWidth - 40, 88);
+  doc.setFontSize(9);
+  doc.text("Relatório consolidado para impressão: operação, mapa, alertas e indicadores.", 40, 104);
+
+  let y = 142;
+  y = drawMetricGrid(
+    doc,
+    [
       { label: "OTIF", value: `${model.metrics.otif}%` },
       { label: "Vendas", value: money(model.metrics.vendas) },
       { label: "Capacidade", value: `${model.metrics.capacidade}%` },
       { label: "Alertas", value: String(model.metrics.alertas) },
+      { label: "Cargas", value: String(model.metrics.cargas) },
+      { label: "Nós da rede", value: String(model.metrics.nosRede) },
     ],
-    sections: [
-      {
-        title: "Rede Integrada",
-        head: ["Módulo", "Indicador", "Detalhe"],
-        body: model.moduleCards.map((item) => [item.label, item.value, item.detail]),
-      },
-      {
-        title: "Alertas Proativos",
-        head: ["Origem", "Alerta", "Severidade"],
-        body: model.alerts.map((item) => [item.source, item.title, item.severity]),
-      },
-      {
-        title: "Cargas e Ordens Recentes",
-        head: ["Código", "Cliente", "Destino", "Status"],
-        body: model.shipments.map((item) => [item.codigo, item.cliente, item.destino, item.status]),
-      },
+    y,
+  );
+
+  y = drawMetricGrid(
+    doc,
+    [
+      { label: "Em trânsito", value: String(model.mapMetrics.emTransito) },
+      { label: "Entregues", value: String(model.mapMetrics.entregues) },
+      { label: "Atrasadas", value: String(model.mapMetrics.atrasadas) },
+      { label: "Total de Cargas", value: String(model.mapMetrics.totalCargas) },
+      { label: "Rotas", value: String(model.mapMetrics.totalRotas) },
+      { label: "Bases/CDs", value: String(model.mapMetrics.bases) },
     ],
+    y + 8,
+    "Totais agregados do mapa",
+  );
+
+  if (mapSnapshot && y < 540) {
+    doc.setTextColor(23, 37, 30);
+    doc.setFontSize(12);
+    doc.text("Captura do mapa operacional", 40, y + 8);
+    doc.addImage(mapSnapshot, "PNG", 40, y + 18, pageWidth - 80, 150, undefined, "FAST");
+    y += 188;
+  }
+
+  autoTable(doc, {
+    startY: y + 8,
+    head: [["Módulo", "Indicador", "Detalhe"]],
+    body: model.moduleCards.map((item) => [item.label, item.value, item.detail]),
+    styles: { fontSize: 8, cellPadding: 6 },
+    headStyles: { fillColor: [20, 83, 45], textColor: 255 },
+    alternateRowStyles: { fillColor: [246, 248, 246] },
+    margin: { left: 40, right: 40 },
   });
-  downloadPdf(doc, "torre-de-controle-nery.pdf");
+
+  autoTable(doc, {
+    startY: lastTableY(doc) + 28,
+    head: [["Origem", "Alerta", "Descrição", "Severidade"]],
+    body: model.alerts.map((item) => [item.source, item.title, item.description, item.severity]),
+    styles: { fontSize: 7.5, cellPadding: 5 },
+    headStyles: { fillColor: [15, 23, 42], textColor: 255 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    margin: { left: 40, right: 40 },
+  });
+
+  autoTable(doc, {
+    startY: lastTableY(doc) + 28,
+    head: [["Código", "Cliente", "Destino", "Motorista", "Status", "Valor"]],
+    body: model.shipments.map((item) => [
+      item.codigo,
+      item.cliente,
+      item.destino,
+      item.motorista,
+      item.status,
+      money(Number(item.valor ?? 0)),
+    ]),
+    styles: { fontSize: 7.5, cellPadding: 5 },
+    headStyles: { fillColor: [20, 83, 45], textColor: 255 },
+    alternateRowStyles: { fillColor: [246, 248, 246] },
+    margin: { left: 40, right: 40 },
+  });
+
+  addFooters(doc);
+  downloadPdf(doc, "torre-de-controle-nery-agro.pdf");
+}
+
+function lastTableY(doc: jsPDF) {
+  return (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 120;
+}
+
+function drawMetricGrid(
+  doc: jsPDF,
+  metrics: Array<{ label: string; value: string }>,
+  y: number,
+  title?: string,
+) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const colWidth = (pageWidth - 80) / 3;
+  let nextY = y;
+  if (title) {
+    doc.setTextColor(23, 37, 30);
+    doc.setFontSize(12);
+    doc.text(title, 40, nextY);
+    nextY += 14;
+  }
+  metrics.forEach((metric, index) => {
+    const col = index % 3;
+    const row = Math.floor(index / 3);
+    const x = 40 + col * colWidth;
+    const boxY = nextY + row * 58;
+    doc.setDrawColor(220, 226, 220);
+    doc.setFillColor(250, 252, 250);
+    doc.roundedRect(x, boxY, colWidth - 10, 46, 6, 6, "FD");
+    doc.setTextColor(95, 108, 101);
+    doc.setFontSize(8);
+    doc.text(metric.label, x + 12, boxY + 16);
+    doc.setTextColor(23, 37, 30);
+    doc.setFontSize(14);
+    doc.text(String(metric.value).slice(0, 24), x + 12, boxY + 34);
+  });
+  return nextY + Math.ceil(metrics.length / 3) * 58;
+}
+
+function addFooters(doc: jsPDF) {
+  const pageCount = doc.getNumberOfPages();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  for (let page = 1; page <= pageCount; page += 1) {
+    doc.setPage(page);
+    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(8);
+    doc.text(`Nery Agro · Torre de Controle · Página ${page}/${pageCount}`, 40, pageHeight - 24);
+    doc.text("Relatório pronto para impressão", pageWidth - 150, pageHeight - 24);
+  }
+}
+
+async function captureMapSnapshot() {
+  try {
+    const canvas = document.querySelector<HTMLCanvasElement>(".maplibregl-canvas");
+    return canvas?.toDataURL("image/png");
+  } catch {
+    return undefined;
+  }
 }
 
 function pointLayer(point: MapPoint) {
@@ -166,7 +296,7 @@ export function ControlTowerPage() {
             Exportar CSV
           </button>
           <button
-            onClick={() => exportPdf(model, demoMode)}
+            onClick={() => void exportPdf(model, demoMode, period)}
             className="flex h-10 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm hover:bg-muted"
           >
             <FileText className="h-4 w-4" />
@@ -241,7 +371,12 @@ export function ControlTowerPage() {
         <AgroMap
           points={filteredPoints}
           routes={filteredRoutes}
-          stats={model.layerStats}
+          stats={[
+            { label: "Em trânsito", value: model.mapMetrics.emTransito, tone: "primary" },
+            { label: "Entregues", value: model.mapMetrics.entregues, tone: "success" },
+            { label: "Atrasadas", value: model.mapMetrics.atrasadas, tone: "danger" },
+            { label: "Total de Cargas", value: model.mapMetrics.totalCargas, tone: "neutral" },
+          ]}
           className="h-[560px]"
           title="Rede agro conectada"
           subtitle={

@@ -30,6 +30,15 @@ export type ControlTowerModel = {
     cargas: number;
     nosRede: number;
   };
+  mapMetrics: {
+    emTransito: number;
+    entregues: number;
+    atrasadas: number;
+    totalCargas: number;
+    totalRotas: number;
+    bases: number;
+    ocorrencias: number;
+  };
   moduleCards: Array<{ label: string; value: string; detail: string; tone: string }>;
   alerts: ControlAlert[];
   points: MapPoint[];
@@ -359,6 +368,9 @@ export function buildControlTowerModel(snapshot: ConnectedAgroSnapshot): Control
   const emTransito = cargas.filter((item) =>
     normalized(item.payload.status).includes("transito"),
   ).length;
+  const ocorrencias = snapshot.field.filter((item) =>
+    ["pragas", "scouting", "diario"].includes(item.module),
+  ).length;
   const otifBase = entregues + atrasadas;
   const capacidade = frota.length
     ? Math.round(
@@ -379,6 +391,15 @@ export function buildControlTowerModel(snapshot: ConnectedAgroSnapshot): Control
       alertas: alerts.filter((alert) => alert.severity !== "info").length,
       cargas: cargas.length,
       nosRede: bases.length + snapshot.field.filter((item) => item.module === "areas").length + 4,
+    },
+    mapMetrics: {
+      emTransito,
+      entregues,
+      atrasadas,
+      totalCargas: cargas.length,
+      totalRotas: routes.length || rotas.length,
+      bases: bases.length,
+      ocorrencias,
     },
     moduleCards: [
       {
@@ -527,9 +548,14 @@ function buildNetworkMap(snapshot: ConnectedAgroSnapshot) {
           tone,
           meta: {
             tipo: "Cliente",
+            status: item.payload.status,
             cliente: item.payload.cliente,
+            origem: item.payload.origem,
+            destino: item.payload.destino,
             motorista: item.payload.motorista,
+            placa: item.payload.placa,
             ETA: item.payload.eta,
+            valor: item.payload.valor,
           },
           ...destination,
         });
