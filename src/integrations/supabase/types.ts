@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      animal_pdf_records: {
+        Row: {
+          animal_identifier: string
+          animal_record_id: string
+          created_at: string
+          file_name: string
+          file_path: string
+          id: string
+          payload_snapshot: Json
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          animal_identifier: string
+          animal_record_id: string
+          created_at?: string
+          file_name: string
+          file_path: string
+          id?: string
+          payload_snapshot?: Json
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          animal_identifier?: string
+          animal_record_id?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          payload_snapshot?: Json
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
       field_records: {
         Row: {
           created_at: string
