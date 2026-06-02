@@ -123,7 +123,9 @@ export function AgroMap({
   const routeCollection = useMemo(
     () => ({
       type: "FeatureCollection" as const,
-      features: routes.map(routeFeature).filter(Boolean),
+      features: routes
+        .map(routeFeature)
+        .filter((feature): feature is NonNullable<ReturnType<typeof routeFeature>> => feature !== null),
     }),
     [routes],
   );
