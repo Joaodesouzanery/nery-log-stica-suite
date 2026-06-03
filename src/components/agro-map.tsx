@@ -1,7 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { LngLatBoundsLike, Map as MapLibreMap, Marker } from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
-import { CheckCircle2, Navigation, Package, Route, Truck, XCircle } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import {
+  Building2,
+  CheckCircle2,
+  Home,
+  Minus,
+  Navigation,
+  Package,
+  Plus,
+  RotateCcw,
+  Route,
+  Sprout,
+  Truck,
+  XCircle,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CartoMapTone, MapPoint, MapRoute } from "@/components/carto-map";
 
@@ -10,6 +21,13 @@ type MapStat = {
   value: string | number;
   tone?: CartoMapTone;
 };
+
+type ProjectedPoint = MapPoint & { px: number; py: number; kind: PointKind };
+type ProjectedRoute = MapRoute & { coords: Array<{ px: number; py: number }> };
+type PointKind = "origem" | "cliente" | "base" | "campo" | "rota" | "fornecedor";
+type SelectedItem =
+  | { type: "point"; item: ProjectedPoint; x: number; y: number }
+  | { type: "route"; item: ProjectedRoute; x: number; y: number };
 
 type AgroMapProps = {
   points?: MapPoint[];
@@ -31,7 +49,7 @@ const toneColor: Record<CartoMapTone, string> = {
   neutral: "#cbd5e1",
 };
 
-const markerTone: Record<CartoMapTone, string> = {
+const markerClass: Record<CartoMapTone, string> = {
   primary: "border-blue-300 bg-blue-500 text-white",
   success: "border-emerald-300 bg-emerald-500 text-slate-950",
   warning: "border-amber-200 bg-amber-400 text-slate-950",
@@ -40,33 +58,31 @@ const markerTone: Record<CartoMapTone, string> = {
   neutral: "border-slate-200 bg-slate-600 text-white",
 };
 
-const iconByType: Record<string, string> = {
-  origem:
-    "M12 2 3 6v6c0 5 4 8 9 10 5-2 9-5 9-10V6l-9-4Zm0 4 5 2.2V12c0 2.9-2 5-5 6.4C9 17 7 14.9 7 12V8.2L12 6Z",
-  cliente:
-    "M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z",
-  base: "M3 21V8l9-5 9 5v13h-6v-7H9v7H3Zm6-9h6V9H9v3Z",
-  campo: "M4 20c8-1 13-6 16-17-9 2-15 7-16 17Zm3-3c2-4 5-7 10-10-2 5-5 8-10 10Z",
-  rota: "M5 18a3 3 0 1 0 2.8 2H10c2.8 0 5-2.2 5-5s-2.2-5-5-5H8a3 3 0 1 1 0-2h2c3.9 0 7 3.1 7 7s-3.1 7-7 7H7.8A3 3 0 0 0 5 18Z",
-  fornecedor: "M4 4h16v4H4V4Zm1 6h14l-1 10H6L5 10Zm4 3v4h2v-4H9Zm4 0v4h2v-4h-2Z",
-};
-
-function coordinate(point: { lat?: number; lng?: number }): [number, number] | null {
-  if (point.lat === undefined || point.lng === undefined) return null;
-  if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) return null;
-  return [point.lng, point.lat];
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
 }
 
-function escapeHtml(value: unknown) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+function coordinate(point: { lat?: number; lng?: number; x?: number; y?: number }) {
+  if (
+    typeof point.lat === "number" &&
+    typeof point.lng === "number" &&
+    Number.isFinite(point.lat) &&
+    Number.isFinite(point.lng)
+  ) {
+    return { lat: point.lat, lng: point.lng };
+  }
+  if (
+    typeof point.x === "number" &&
+    typeof point.y === "number" &&
+    Number.isFinite(point.x) &&
+    Number.isFinite(point.y)
+  ) {
+    return { x: point.x, y: point.y };
+  }
+  return null;
 }
 
-function pointType(point: MapPoint) {
+function pointKind(point: MapPoint): PointKind {
   const raw = String(point.meta?.tipo ?? "").toLowerCase();
   if (point.id.startsWith("origin-")) return "origem";
   if (point.id.startsWith("dest-")) return "cliente";
@@ -77,66 +93,45 @@ function pointType(point: MapPoint) {
   return "cliente";
 }
 
-function popupHtml(
-  title: string,
-  caption?: string,
-  meta?: Record<string, string | number | undefined>,
+function projectPercent(
+  point: { lat?: number; lng?: number; x?: number; y?: number },
+  bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number },
 ) {
-  const rows = Object.entries(meta ?? {}).filter(
-    ([, value]) => value !== undefined && value !== "",
-  );
-  return `
-    <div style="min-width:250px;max-width:340px;font-family:Inter,system-ui,sans-serif;color:#e5edf7;background:#0f172a">
-      <div style="border-bottom:1px solid rgba(148,163,184,.35);padding:10px 10px 8px">
-        <div style="font-size:13px;font-weight:800;color:#f8fafc">${escapeHtml(title)}</div>
-        ${caption ? `<div style="font-size:11px;color:#cbd5e1;margin-top:3px">${escapeHtml(caption)}</div>` : ""}
-      </div>
-      ${
-        rows.length
-          ? `<div style="display:grid;gap:0;padding:4px 10px 10px">${rows
-              .map(
-                ([key, value]) =>
-                  `<div style="display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(148,163,184,.18);padding:6px 0">
-                    <span style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#94a3b8">${escapeHtml(key.replace(/_/g, " "))}</span>
-                    <strong style="font-size:11px;color:#f8fafc;text-align:right">${escapeHtml(value)}</strong>
-                  </div>`,
-              )
-              .join("")}</div>`
-          : ""
-      }
-    </div>
-  `;
-}
+  if (typeof point.x === "number" && typeof point.y === "number") {
+    return { px: clamp(point.x, 4, 96), py: clamp(point.y, 10, 94) };
+  }
 
-function routeFeature(route: MapRoute) {
-  const coordinates = route.points.map(coordinate).filter(Boolean) as [number, number][];
-  if (coordinates.length < 2) return null;
+  if (typeof point.lat !== "number" || typeof point.lng !== "number") {
+    return { px: 50, py: 50 };
+  }
+
+  const lngSpan = Math.max(bounds.maxLng - bounds.minLng, 0.01);
+  const latSpan = Math.max(bounds.maxLat - bounds.minLat, 0.01);
   return {
-    type: "Feature" as const,
-    properties: {
-      id: route.id,
-      label: route.label ?? "Rota",
-      tone: route.tone ?? "primary",
-      description: route.description ?? route.status ?? "",
-    },
-    geometry: { type: "LineString" as const, coordinates },
+    px: clamp(8 + ((point.lng - bounds.minLng) / lngSpan) * 84, 4, 96),
+    py: clamp(10 + ((bounds.maxLat - point.lat) / latSpan) * 78, 8, 94),
   };
 }
 
-function markerHtml(point: MapPoint) {
-  const tone = point.tone ?? "neutral";
-  const type = pointType(point);
-  const path = iconByType[type] ?? iconByType.cliente;
-  return `
-    <span class="flex h-7 w-7 items-center justify-center rounded border shadow-lg shadow-black/40 ${markerTone[tone]}">
-      <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
-        <path d="${path}"></path>
-      </svg>
-    </span>
-    <span class="max-w-[150px] truncate rounded border border-white/15 bg-slate-950/85 px-1.5 py-1 text-[10px] font-semibold text-white shadow-lg shadow-black/30">
-      ${escapeHtml(point.label)}
-    </span>
-  `;
+function metadata(item: MapPoint | MapRoute) {
+  return Object.entries(item.meta ?? {}).filter(([, value]) => value !== undefined && value !== "");
+}
+
+function statIcon(tone: CartoMapTone) {
+  if (tone === "success") return CheckCircle2;
+  if (tone === "danger") return XCircle;
+  if (tone === "warning") return Route;
+  if (tone === "info") return Package;
+  return Truck;
+}
+
+function pointIcon(kind: PointKind) {
+  if (kind === "base") return Building2;
+  if (kind === "campo") return Sprout;
+  if (kind === "origem") return Home;
+  if (kind === "rota") return Route;
+  if (kind === "fornecedor") return Package;
+  return Truck;
 }
 
 export function AgroMap({
@@ -144,240 +139,201 @@ export function AgroMap({
   routes = [],
   stats = [],
   className,
-  center = [-51.9253, -14.235],
-  zoom = 3.5,
   title = "Mapa operacional",
   subtitle = "Clique nos marcadores e rotas para ver detalhes.",
 }: AgroMapProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<MapLibreMap | null>(null);
-  const markersRef = useRef<Marker[]>([]);
-  const [mapError, setMapError] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [selected, setSelected] = useState<SelectedItem | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; x: number; y: number } | null>(null);
 
-  const routeCollection = useMemo(
-    () => ({
-      type: "FeatureCollection" as const,
-      features: routes
-        .map(routeFeature)
-        .filter(
-          (feature): feature is NonNullable<ReturnType<typeof routeFeature>> => feature !== null,
-        ),
-    }),
-    [routes],
-  );
-  const hasSpatialData =
-    points.some((point) => coordinate(point)) || routeCollection.features.length > 0;
-
-  useEffect(() => {
-    if (!containerRef.current || mapRef.current || typeof window === "undefined") return;
-    let cancelled = false;
-    let observer: ResizeObserver | null = null;
-
-    async function initMap() {
-      try {
-        const maplibregl = await import("maplibre-gl");
-        if (cancelled || !containerRef.current) return;
-        const map = new maplibregl.Map({
-          container: containerRef.current,
-          center,
-          zoom,
-          attributionControl: false,
-          style: {
-            version: 8,
-            sources: {
-              dark: {
-                type: "raster",
-                tiles: [
-                  "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-                  "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-                  "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-                ],
-                tileSize: 256,
-                attribution: "OpenStreetMap / CARTO",
-              },
-            },
-            layers: [{ id: "dark", type: "raster", source: "dark" }],
-          },
-        });
-        map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
-        map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
-        map.on("load", () => {
-          map.resize();
-          setReady(true);
-        });
-        map.on("error", (event) => {
-          if (String(event.error?.message ?? "").includes("Failed to fetch")) {
-            setMapError(
-              "Alguns tiles do mapa não carregaram. Os marcadores continuam disponíveis.",
-            );
-          }
-        });
-        observer = new ResizeObserver(() => map.resize());
-        observer.observe(containerRef.current);
-        mapRef.current = map;
-      } catch (error) {
-        setMapError(error instanceof Error ? error.message : "Não foi possível carregar o mapa.");
-      }
-    }
-
-    void initMap();
-
-    return () => {
-      cancelled = true;
-      observer?.disconnect();
-      markersRef.current.forEach((marker) => marker.remove());
-      markersRef.current = [];
-      mapRef.current?.remove();
-      mapRef.current = null;
-      setReady(false);
-    };
-  }, [center, zoom]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !ready) return;
-    let cancelled = false;
-
-    const render = async () => {
-      try {
-        const maplibregl = await import("maplibre-gl");
-        if (cancelled || mapRef.current !== map) return;
-        markersRef.current.forEach((marker) => marker.remove());
-        markersRef.current = [];
-
-        if (map.getLayer("route-hit")) map.removeLayer("route-hit");
-        if (map.getLayer("route-pulse")) map.removeLayer("route-pulse");
-        if (map.getLayer("route-lines")) map.removeLayer("route-lines");
-        if (map.getSource("routes")) map.removeSource("routes");
-
-        if (routeCollection.features.length) {
-          map.addSource("routes", { type: "geojson", data: routeCollection });
-          map.addLayer({
-            id: "route-lines",
-            type: "line",
-            source: "routes",
-            layout: { "line-cap": "round", "line-join": "round" },
-            paint: {
-              "line-color": [
-                "match",
-                ["get", "tone"],
-                "success",
-                toneColor.success,
-                "warning",
-                toneColor.warning,
-                "danger",
-                toneColor.danger,
-                "info",
-                toneColor.info,
-                toneColor.primary,
-              ],
-              "line-width": 3.5,
-              "line-opacity": 0.9,
-            },
-          });
-          map.addLayer({
-            id: "route-pulse",
-            type: "line",
-            source: "routes",
-            layout: { "line-cap": "round", "line-join": "round" },
-            paint: {
-              "line-color": "#e2e8f0",
-              "line-width": 1.2,
-              "line-dasharray": [2, 2],
-              "line-opacity": 0.65,
-            },
-          });
-          map.addLayer({
-            id: "route-hit",
-            type: "line",
-            source: "routes",
-            paint: { "line-color": "#000", "line-width": 14, "line-opacity": 0 },
-          });
-          map.on("mouseenter", "route-hit", () => {
-            map.getCanvas().style.cursor = "pointer";
-          });
-          map.on("mouseleave", "route-hit", () => {
-            map.getCanvas().style.cursor = "";
-          });
-          map.on("click", "route-hit", (event) => {
-            const feature = event.features?.[0];
-            if (!feature) return;
-            new maplibregl.Popup({ closeButton: true, closeOnClick: true, className: "agro-popup" })
-              .setLngLat(event.lngLat)
-              .setHTML(
-                popupHtml(String(feature.properties?.label ?? "Rota"), "Trajeto cadastrado", {
-                  descrição: String(feature.properties?.description ?? ""),
-                  status: String(feature.properties?.tone ?? "primary"),
-                }),
-              )
-              .addTo(map);
-          });
+  const { projectedPoints, projectedRoutes, hasSpatialData } = useMemo(() => {
+    const allCoords = [
+      ...points.map(coordinate),
+      ...routes.flatMap((route) => route.points.map(coordinate)),
+    ].filter(Boolean) as Array<{ lat?: number; lng?: number; x?: number; y?: number }>;
+    const latLngCoords = allCoords.filter(
+      (item): item is { lat: number; lng: number } =>
+        typeof item.lat === "number" && typeof item.lng === "number",
+    );
+    const bounds = latLngCoords.length
+      ? {
+          minLat: Math.min(...latLngCoords.map((item) => item.lat)),
+          maxLat: Math.max(...latLngCoords.map((item) => item.lat)),
+          minLng: Math.min(...latLngCoords.map((item) => item.lng)),
+          maxLng: Math.max(...latLngCoords.map((item) => item.lng)),
         }
+      : { minLat: -34, maxLat: 6, minLng: -74, maxLng: -34 };
 
-        const bounds = new maplibregl.LngLatBounds();
-        points.forEach((point) => {
-          const coord = coordinate(point);
-          if (!coord) return;
-          const markerEl = document.createElement("button");
-          markerEl.type = "button";
-          markerEl.title = `${point.label}${point.caption ? ` - ${point.caption}` : ""}`;
-          markerEl.className =
-            "group flex items-center gap-1.5 transition-transform hover:scale-105";
-          markerEl.innerHTML = markerHtml(point);
+    const projected = points
+      .map((point) => {
+        const coord = coordinate(point);
+        if (!coord) return null;
+        return { ...point, ...projectPercent(point, bounds), kind: pointKind(point) };
+      })
+      .filter(Boolean) as ProjectedPoint[];
 
-          const marker = new maplibregl.Marker({ element: markerEl, anchor: "bottom" })
-            .setLngLat(coord)
-            .setPopup(
-              new maplibregl.Popup({ offset: 20, className: "agro-popup" }).setHTML(
-                popupHtml(point.label, point.caption ?? point.description, point.meta),
-              ),
-            )
-            .addTo(map);
-          markersRef.current.push(marker);
-          bounds.extend(coord);
-        });
+    const routeProjection = routes
+      .map((route) => ({
+        ...route,
+        coords: route.points
+          .filter((point) => coordinate(point))
+          .map((point) => projectPercent(point, bounds)),
+      }))
+      .filter((route) => route.coords.length >= 2) as ProjectedRoute[];
 
-        routeCollection.features.forEach((feature) => {
-          feature.geometry.coordinates.forEach((coord) => bounds.extend(coord));
-        });
-
-        if (!bounds.isEmpty()) {
-          map.fitBounds(bounds as LngLatBoundsLike, {
-            padding: { top: 118, right: 64, bottom: 58, left: 64 },
-            maxZoom: 9,
-            duration: 650,
-          });
-        } else {
-          map.flyTo({ center, zoom, duration: 400 });
-        }
-      } catch (error) {
-        console.warn("agro-map render skipped:", error);
-      }
+    return {
+      projectedPoints: projected,
+      projectedRoutes: routeProjection,
+      hasSpatialData: projected.length > 0 || routeProjection.length > 0,
     };
+  }, [points, routes]);
 
-    void render();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [center, points, ready, routeCollection, zoom]);
+  const transform = `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`;
+  const reset = () => {
+    setZoom(1);
+    setOffset({ x: 0, y: 0 });
+    setSelected(null);
+  };
 
   return (
     <div
       className={cn(
-        "relative min-h-[420px] overflow-hidden rounded-xl border border-slate-800 bg-slate-950",
+        "relative min-h-[420px] overflow-hidden rounded-xl border border-slate-800 bg-[#020617]",
         className,
       )}
+      onWheel={(event) => {
+        event.preventDefault();
+        setZoom((current) => clamp(current + (event.deltaY < 0 ? 0.12 : -0.12), 0.75, 2.8));
+      }}
+      onPointerDown={(event) => {
+        if (event.button !== 0) return;
+        dragRef.current = {
+          startX: event.clientX,
+          startY: event.clientY,
+          x: offset.x,
+          y: offset.y,
+        };
+      }}
+      onPointerMove={(event) => {
+        const drag = dragRef.current;
+        if (!drag) return;
+        setOffset({
+          x: clamp(drag.x + event.clientX - drag.startX, -260, 260),
+          y: clamp(drag.y + event.clientY - drag.startY, -180, 180),
+        });
+      }}
+      onPointerUp={() => {
+        dragRef.current = null;
+      }}
+      onPointerLeave={() => {
+        dragRef.current = null;
+      }}
+      onClick={() => setSelected(null)}
     >
-      <div ref={containerRef} className="absolute inset-0" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(37,99,235,0.13),transparent_36%)]" />
-      {(!hasSpatialData || mapError) && (
-        <div className="pointer-events-none absolute inset-x-4 bottom-4 z-20 rounded-lg border border-white/15 bg-slate-950/85 px-4 py-3 text-xs text-white/75 backdrop-blur">
-          {mapError ??
-            "Nenhuma coordenada disponível para desenhar pontos ou rotas. Cadastre lat/lng nas cargas, bases ou ocorrências para ativar a visualização completa."}
-        </div>
-      )}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_48%_42%,rgba(37,99,235,0.25),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.92),rgba(2,6,23,1))]" />
+      <svg className="absolute inset-0 h-full w-full opacity-45" aria-hidden="true">
+        <defs>
+          <pattern id="agro-map-grid" width="42" height="42" patternUnits="userSpaceOnUse">
+            <path d="M 42 0 L 0 0 0 42" fill="none" stroke="#334155" strokeWidth="0.7" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#agro-map-grid)" />
+        <path
+          d="M82 88 C150 42, 254 30, 336 78 C398 115, 488 100, 592 72 C704 42, 818 54, 914 92"
+          fill="none"
+          stroke="#1e293b"
+          strokeWidth="18"
+          strokeLinecap="round"
+        />
+        <path
+          d="M110 420 C210 338, 312 330, 426 374 C526 412, 646 394, 774 322 C860 274, 930 268, 1030 312"
+          fill="none"
+          stroke="#1e293b"
+          strokeWidth="16"
+          strokeLinecap="round"
+        />
+      </svg>
+
+      <div className="absolute inset-0 origin-center" style={{ transform }}>
+        <svg
+          className="absolute inset-0 h-full w-full"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+        >
+          {projectedRoutes.map((route) => {
+            const pointsAttr = route.coords.map((point) => `${point.px},${point.py}`).join(" ");
+            const mid = route.coords[Math.floor(route.coords.length / 2)] ?? { px: 50, py: 50 };
+            return (
+              <g key={route.id}>
+                <polyline
+                  points={pointsAttr}
+                  fill="none"
+                  stroke={toneColor[route.tone ?? "primary"]}
+                  strokeWidth="1"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  vectorEffect="non-scaling-stroke"
+                  opacity="0.92"
+                />
+                <polyline
+                  points={pointsAttr}
+                  fill="none"
+                  stroke="#e2e8f0"
+                  strokeWidth="0.32"
+                  strokeDasharray="1.3 1.3"
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                  opacity="0.7"
+                />
+                <polyline
+                  points={pointsAttr}
+                  fill="none"
+                  stroke="transparent"
+                  strokeWidth="5"
+                  vectorEffect="non-scaling-stroke"
+                  className="cursor-pointer"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setSelected({ type: "route", item: route, x: mid.px, y: mid.py });
+                  }}
+                />
+              </g>
+            );
+          })}
+        </svg>
+
+        {projectedPoints.map((point) => {
+          const Icon = pointIcon(point.kind);
+          const tone = point.tone ?? "neutral";
+          return (
+            <button
+              key={point.id}
+              type="button"
+              title={`${point.label}${point.caption ? ` - ${point.caption}` : ""}`}
+              className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 transition-transform hover:scale-105"
+              style={{ left: `${point.px}%`, top: `${point.py}%` }}
+              onClick={(event) => {
+                event.stopPropagation();
+                setSelected({ type: "point", item: point, x: point.px, y: point.py });
+              }}
+            >
+              <span
+                className={cn(
+                  "flex h-7 w-7 items-center justify-center rounded border shadow-lg shadow-black/40",
+                  markerClass[tone],
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+              </span>
+              <span className="max-w-[150px] truncate rounded border border-white/15 bg-slate-950/85 px-1.5 py-1 text-[10px] font-semibold text-white shadow-lg shadow-black/30">
+                {point.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 bg-gradient-to-b from-slate-950/95 via-slate-950/55 to-transparent p-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="max-w-md rounded-lg border border-white/15 bg-slate-950/75 px-3 py-2 text-white shadow-xl backdrop-blur">
@@ -390,23 +346,14 @@ export function AgroMap({
           <div className="grid grid-cols-2 gap-2 lg:flex">
             {stats.map((stat) => {
               const tone = stat.tone ?? "neutral";
+              const Icon = statIcon(tone);
               return (
                 <div
                   key={stat.label}
                   className="min-w-[112px] rounded-lg border border-white/15 bg-slate-950/78 px-3 py-2 text-white shadow-xl backdrop-blur"
                 >
                   <div className="flex items-center gap-1.5 text-[10px] text-white/65">
-                    {tone === "success" ? (
-                      <CheckCircle2 className="h-3 w-3" />
-                    ) : tone === "danger" ? (
-                      <XCircle className="h-3 w-3" />
-                    ) : tone === "warning" ? (
-                      <Route className="h-3 w-3" />
-                    ) : tone === "info" ? (
-                      <Package className="h-3 w-3" />
-                    ) : (
-                      <Truck className="h-3 w-3" />
-                    )}
+                    <Icon className="h-3 w-3" />
                     {stat.label}
                   </div>
                   <div className="mt-1 text-lg font-semibold" style={{ color: toneColor[tone] }}>
@@ -418,8 +365,84 @@ export function AgroMap({
           </div>
         </div>
       </div>
+
+      <div className="absolute right-3 top-28 z-20 grid gap-1">
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            setZoom((current) => clamp(current + 0.18, 0.75, 2.8));
+          }}
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-white/15 bg-slate-950/85 text-white shadow-sm"
+          aria-label="Aproximar mapa"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            setZoom((current) => clamp(current - 0.18, 0.75, 2.8));
+          }}
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-white/15 bg-slate-950/85 text-white shadow-sm"
+          aria-label="Afastar mapa"
+        >
+          <Minus className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            reset();
+          }}
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-white/15 bg-slate-950/85 text-white shadow-sm"
+          aria-label="Centralizar mapa"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </button>
+      </div>
+
+      {!hasSpatialData && (
+        <div className="pointer-events-none absolute inset-x-4 bottom-4 z-20 rounded-lg border border-white/15 bg-slate-950/85 px-4 py-3 text-xs text-white/75 backdrop-blur">
+          Nenhuma coordenada disponível para desenhar pontos ou rotas. Cadastre lat/lng nas cargas,
+          bases ou ocorrências para ativar a visualização completa.
+        </div>
+      )}
+
+      {selected && (
+        <div
+          className="absolute z-30 w-72 rounded-lg border border-white/15 bg-slate-950/95 p-3 text-xs text-white shadow-2xl backdrop-blur"
+          style={{
+            left: `${clamp(selected.x, 8, 68)}%`,
+            top: `${clamp(selected.y, 14, 72)}%`,
+          }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="text-sm font-semibold">{selected.item.label ?? "Rota"}</div>
+          {selected.item.description && (
+            <div className="mt-1 leading-relaxed text-white/70">{selected.item.description}</div>
+          )}
+          {selected.type === "point" && selected.item.caption && (
+            <div className="mt-1 text-white/70">{selected.item.caption}</div>
+          )}
+          {metadata(selected.item).length > 0 && (
+            <dl className="mt-3 grid gap-1.5">
+              {metadata(selected.item).map(([key, value]) => (
+                <div
+                  key={key}
+                  className="flex justify-between gap-3 border-t border-white/10 pt-1.5"
+                >
+                  <dt className="text-white/50">{key.replace(/_/g, " ")}</dt>
+                  <dd className="text-right font-semibold">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
+      )}
+
       <div className="pointer-events-none absolute bottom-3 right-3 z-10 rounded bg-slate-950/75 px-2 py-1 text-[10px] text-white/65 backdrop-blur">
-        MapLibre / CARTO / OSM
+        Mapa interativo interno
       </div>
     </div>
   );
