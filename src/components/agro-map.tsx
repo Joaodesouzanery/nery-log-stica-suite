@@ -28,6 +28,13 @@ type PointKind = "origem" | "cliente" | "base" | "campo" | "rota" | "fornecedor"
 type SelectedItem =
   | { type: "point"; item: ProjectedPoint; x: number; y: number }
   | { type: "route"; item: ProjectedRoute; x: number; y: number };
+type TileGrid = {
+  z: number;
+  xMin: number;
+  yMin: number;
+  cols: number;
+  rows: number;
+};
 
 type AgroMapProps = {
   points?: MapPoint[];
@@ -57,6 +64,9 @@ const markerClass: Record<CartoMapTone, string> = {
   info: "border-cyan-200 bg-cyan-500 text-slate-950",
   neutral: "border-slate-200 bg-slate-600 text-white",
 };
+
+const cartoGrid: TileGrid = { z: 4, xMin: 4, yMin: 6, cols: 4, rows: 4 };
+const cartoTileHosts = ["a", "b", "c", "d"];
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -95,7 +105,7 @@ function pointKind(point: MapPoint): PointKind {
 
 function projectPercent(
   point: { lat?: number; lng?: number; x?: number; y?: number },
-  bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number },
+  grid: TileGrid,
 ) {
   if (typeof point.x === "number" && typeof point.y === "number") {
     return { px: clamp(point.x, 4, 96), py: clamp(point.y, 10, 94) };
@@ -105,11 +115,13 @@ function projectPercent(
     return { px: 50, py: 50 };
   }
 
-  const lngSpan = Math.max(bounds.maxLng - bounds.minLng, 0.01);
-  const latSpan = Math.max(bounds.maxLat - bounds.minLat, 0.01);
+  const n = 2 ** grid.z;
+  const tileX = ((point.lng + 180) / 360) * n;
+  const latRad = (point.lat * Math.PI) / 180;
+  const tileY = ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n;
   return {
-    px: clamp(8 + ((point.lng - bounds.minLng) / lngSpan) * 84, 4, 96),
-    py: clamp(10 + ((bounds.maxLat - point.lat) / latSpan) * 78, 8, 94),
+    px: clamp(((tileX - grid.xMin) / grid.cols) * 100, 3, 97),
+    py: clamp(((tileY - grid.yMin) / grid.rows) * 100, 7, 94),
   };
 }
 
@@ -147,29 +159,26 @@ export function AgroMap({
   const [selected, setSelected] = useState<SelectedItem | null>(null);
   const dragRef = useRef<{ startX: number; startY: number; x: number; y: number } | null>(null);
 
-  const { projectedPoints, projectedRoutes, hasSpatialData } = useMemo(() => {
-    const allCoords = [
-      ...points.map(coordinate),
-      ...routes.flatMap((route) => route.points.map(coordinate)),
-    ].filter(Boolean) as Array<{ lat?: number; lng?: number; x?: number; y?: number }>;
-    const latLngCoords = allCoords.filter(
-      (item): item is { lat: number; lng: number } =>
-        typeof item.lat === "number" && typeof item.lng === "number",
-    );
-    const bounds = latLngCoords.length
-      ? {
-          minLat: Math.min(...latLngCoords.map((item) => item.lat)),
-          maxLat: Math.max(...latLngCoords.map((item) => item.lat)),
-          minLng: Math.min(...latLngCoords.map((item) => item.lng)),
-          maxLng: Math.max(...latLngCoords.map((item) => item.lng)),
-        }
-      : { minLat: -34, maxLat: 6, minLng: -74, maxLng: -34 };
+  const cartoTiles = useMemo(() => {
+    const list: Array<{ x: number; y: number; host: string }> = [];
+    for (let row = 0; row < cartoGrid.rows; row += 1) {
+      for (let col = 0; col < cartoGrid.cols; col += 1) {
+        list.push({
+          x: cartoGrid.xMin + col,
+          y: cartoGrid.yMin + row,
+          host: cartoTileHosts[(row * cartoGrid.cols + col) % cartoTileHosts.length],
+        });
+      }
+    }
+    return list;
+  }, []);
 
+  const { projectedPoints, projectedRoutes, hasSpatialData } = useMemo(() => {
     const projected = points
       .map((point) => {
         const coord = coordinate(point);
         if (!coord) return null;
-        return { ...point, ...projectPercent(point, bounds), kind: pointKind(point) };
+        return { ...point, ...projectPercent(point, cartoGrid), kind: pointKind(point) };
       })
       .filter(Boolean) as ProjectedPoint[];
 
@@ -178,7 +187,7 @@ export function AgroMap({
         ...route,
         coords: route.points
           .filter((point) => coordinate(point))
-          .map((point) => projectPercent(point, bounds)),
+          .map((point) => projectPercent(point, cartoGrid)),
       }))
       .filter((route) => route.coords.length >= 2) as ProjectedRoute[];
 
@@ -231,31 +240,26 @@ export function AgroMap({
       }}
       onClick={() => setSelected(null)}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_48%_42%,rgba(37,99,235,0.25),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.92),rgba(2,6,23,1))]" />
-      <svg className="absolute inset-0 h-full w-full opacity-45" aria-hidden="true">
-        <defs>
-          <pattern id="agro-map-grid" width="42" height="42" patternUnits="userSpaceOnUse">
-            <path d="M 42 0 L 0 0 0 42" fill="none" stroke="#334155" strokeWidth="0.7" />
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#agro-map-grid)" />
-        <path
-          d="M82 88 C150 42, 254 30, 336 78 C398 115, 488 100, 592 72 C704 42, 818 54, 914 92"
-          fill="none"
-          stroke="#1e293b"
-          strokeWidth="18"
-          strokeLinecap="round"
-        />
-        <path
-          d="M110 420 C210 338, 312 330, 426 374 C526 412, 646 394, 774 322 C860 274, 930 268, 1030 312"
-          fill="none"
-          stroke="#1e293b"
-          strokeWidth="16"
-          strokeLinecap="round"
-        />
-      </svg>
-
       <div className="absolute inset-0 origin-center" style={{ transform }}>
+        <div
+          className="absolute inset-0 grid opacity-95"
+          style={{
+            gridTemplateColumns: `repeat(${cartoGrid.cols}, minmax(0, 1fr))`,
+            gridTemplateRows: `repeat(${cartoGrid.rows}, minmax(0, 1fr))`,
+          }}
+        >
+          {cartoTiles.map((tile, index) => (
+            <img
+              key={`${tile.x}-${tile.y}`}
+              src={`https://${tile.host}.basemaps.cartocdn.com/dark_all/${cartoGrid.z}/${tile.x}/${tile.y}@2x.png`}
+              alt=""
+              className="h-full w-full select-none object-cover"
+              draggable={false}
+              loading={index < 4 ? "eager" : "lazy"}
+            />
+          ))}
+        </div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_48%_42%,rgba(37,99,235,0.08),transparent_36%),linear-gradient(180deg,rgba(2,6,23,0.18),rgba(2,6,23,0.46))]" />
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"
@@ -442,7 +446,7 @@ export function AgroMap({
       )}
 
       <div className="pointer-events-none absolute bottom-3 right-3 z-10 rounded bg-slate-950/75 px-2 py-1 text-[10px] text-white/65 backdrop-blur">
-        Mapa interativo interno
+        CARTO / OpenStreetMap
       </div>
     </div>
   );
