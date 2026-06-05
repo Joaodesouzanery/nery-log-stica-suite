@@ -4,7 +4,6 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
-  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -128,33 +127,23 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 import { ThemeProvider } from "@/components/theme-provider";
-import { AppSidebar } from "@/components/app-sidebar";
-import { Topbar } from "@/components/topbar";
+import { PlatformTopNav } from "@/components/platform-top-nav";
 import { DemoProvider } from "@/components/demo-provider";
 import { Toaster } from "@/components/ui/sonner";
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const publicRoute = pathname === "/";
 
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <DemoProvider>
-          {publicRoute ? (
-            <Outlet />
-          ) : (
-            <div className="flex min-h-screen w-full bg-background text-foreground">
-              <AppSidebar />
-              <div className="flex-1 flex flex-col min-w-0">
-                <Topbar />
-                <main className="flex-1 overflow-x-hidden">
-                  <Outlet />
-                </main>
-              </div>
-            </div>
-          )}
+          <div className="flex min-h-screen w-full flex-col bg-background text-foreground">
+            <PlatformTopNav />
+            <main className="min-h-0 flex-1 overflow-x-hidden">
+              <Outlet />
+            </main>
+          </div>
           <Toaster position="top-right" />
         </DemoProvider>
       </ThemeProvider>

@@ -23,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { CartoMap, type MapPoint, type MapRoute } from "@/components/carto-map";
+import { type MapPoint, type MapRoute } from "@/components/carto-map";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import {
   createFieldRecord,
@@ -453,8 +453,90 @@ function num(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function numericValue(value: unknown) {
+  const match = String(value ?? "")
+    .replace(",", ".")
+    .match(/-?\d+(\.\d+)?/);
+  if (!match) return undefined;
+  const parsed = Number(match[0]);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function buildPercentileLookup(records: FieldRecord[], key: string) {
+  const values = records
+    .map((recordItem) => ({ id: recordItem.id, value: numericValue(recordItem.payload[key]) }))
+    .filter((item): item is { id: string; value: number } => item.value !== undefined)
+    .sort((a, b) => a.value - b.value);
+
+  if (!values.length) return new Map<string, number>();
+  if (values.length === 1) return new Map([[values[0].id, 100]]);
+
+  return new Map(
+    values.map((item, index) => [
+      item.id,
+      Math.round((index / Math.max(values.length - 1, 1)) * 100),
+    ]),
+  );
+}
+
+function formatPercentile(value: number | undefined) {
+  return value === undefined ? "-" : `P${value}`;
+}
+
+const totalCostKeys = ["custo_total", "custo_hectare", "custo_operacional", "valor"];
+
+function calculatedCostFields(fields: FieldConfig[]) {
+  if (!fields.some((field) => totalCostKeys.includes(field.key))) return fields;
+  const next = [...fields];
+  const add = (field: FieldConfig) => {
+    if (!next.some((item) => item.key === field.key)) next.push(field);
+  };
+  add({ key: "quantidade", label: "Quantidade", type: "number" });
+  add({ key: "unidade_base", label: "Unidade base" });
+  add({ key: "custo_total", label: "Custo total", type: "number" });
+  add({ key: "custo_unitario", label: "Custo unitario", type: "number" });
+  return next;
+}
+
+function normalizeCostPayload(payload: Record<string, string>, changedKey?: string) {
+  const next = { ...payload };
+  if (!Object.keys(next).some((key) => totalCostKeys.includes(key) || key === "custo_unitario")) {
+    return next;
+  }
+
+  if (changedKey && totalCostKeys.includes(changedKey) && changedKey !== "custo_total") {
+    next.custo_total = next[changedKey] ?? "";
+  }
+
+  const quantity = num(next.quantidade);
+  const totalKey =
+    changedKey && totalCostKeys.includes(changedKey)
+      ? changedKey
+      : next.custo_total
+        ? "custo_total"
+        : totalCostKeys.find((key) => next[key]) ?? "custo_total";
+  const total = num(next.custo_total || next[totalKey]);
+  const unit = num(next.custo_unitario);
+  if (quantity <= 0) return next;
+
+  if (changedKey === "custo_unitario" && unit > 0) {
+    next.custo_total = String(Math.round(unit * quantity * 10000) / 10000);
+  } else if (
+    changedKey === "quantidade" ||
+    changedKey === "custo_total" ||
+    totalCostKeys.includes(changedKey ?? "")
+  ) {
+    next.custo_unitario = total > 0 ? String(Math.round((total / quantity) * 10000) / 10000) : "";
+  }
+  return next;
+}
+
+function updateCostPayload(current: Record<string, string>, key: string, value: string) {
+  return normalizeCostPayload({ ...current, [key]: value }, key);
+}
+
 function emptyPayload(module: CampoModule) {
-  return Object.fromEntries(module.fields.map((field) => [field.key, ""]));
+  return Object.fromEntries(calculatedCostFields(module.fields).map((field) => [field.key, ""]));
 }
 
 function formatValue(value: string | undefined, field?: FieldConfig) {
@@ -463,22 +545,68 @@ function formatValue(value: string | undefined, field?: FieldConfig) {
   return value;
 }
 
-function parseRoute(value: unknown) {
+function parseRoute(value: unknown): Array<{ lat?: number; lng?: number; x?: number; y?: number }> {
   const points = String(value ?? "")
     .split(";")
     .map((pair) => {
-      const [x, y] = pair.split(",").map((part) => num(part.trim()));
-      return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+      const [first, second] = pair.split(",").map((part) => num(part.trim()));
+      if (!Number.isFinite(first) || !Number.isFinite(second)) return null;
+      if (first < 0 || second < 0) return { lat: first, lng: second };
+      return { x: first, y: second };
     })
-    .filter((point): point is { x: number; y: number } => Boolean(point));
+    .filter((point): point is { lat?: number; lng?: number; x?: number; y?: number } =>
+      Boolean(point),
+    );
   return points.length > 1 ? points : [];
 }
 
-function parseFocus(value: unknown) {
-  const [x, y] = String(value ?? "")
+function parseFocus(value: unknown): { lat?: number; lng?: number; x?: number; y?: number } | undefined {
+  const [first, second] = String(value ?? "")
     .split(",")
     .map((part) => num(part.trim()));
-  return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : undefined;
+  if (!Number.isFinite(first) || !Number.isFinite(second)) return undefined;
+  if (first < 0 || second < 0) return { lat: first, lng: second };
+  return { x: first, y: second };
+}
+
+function centroid(points: Array<{ lat?: number; lng?: number; x?: number; y?: number }>) {
+  if (!points.length) return undefined;
+  const latLng = points.filter((point) => point.lat !== undefined && point.lng !== undefined);
+  if (latLng.length) {
+    return {
+      lat: latLng.reduce((sum, point) => sum + num(point.lat), 0) / latLng.length,
+      lng: latLng.reduce((sum, point) => sum + num(point.lng), 0) / latLng.length,
+    };
+  }
+  return {
+    x: points.reduce((sum, point) => sum + num(point.x), 0) / points.length,
+    y: points.reduce((sum, point) => sum + num(point.y), 0) / points.length,
+  };
+}
+
+function fieldTone(moduleId: string, payload: Record<string, string>): MapPoint["tone"] {
+  if (moduleId === "pragas") return payload.severidade === "Alta" ? "danger" : "warning";
+  if (["meteorologia", "irrigacao", "maquinario", "nitrogenio"].includes(moduleId)) return "warning";
+  if (["lotes", "diario", "scouting", "analise-solo", "solo"].includes(moduleId)) return "info";
+  if (["areas", "insumos", "planejamento", "estimativa"].includes(moduleId)) return "success";
+  return "primary";
+}
+
+function fieldTitle(module: CampoModule, payload: Record<string, string>) {
+  const preferred = [
+    "talhao",
+    "lote",
+    "insumo",
+    "ocorrencia",
+    "maquina",
+    "cultura",
+    "titulo",
+    "alerta",
+    "zona",
+    "local",
+  ];
+  const key = preferred.find((item) => payload[item]);
+  return key ? payload[key] : module.shortLabel;
 }
 
 function moduleSummary(module: CampoModule, records: FieldRecord[]) {
@@ -545,6 +673,9 @@ function CampoPage() {
             id: item.id,
             label: item.payload.talhao || "Talhão",
             points,
+            shape: "polygon" as const,
+            category: "areas",
+            sourceModule: "areas",
             status: item.payload.status,
             description: item.payload.uso_solo,
             tone: "success" as const,
@@ -577,6 +708,62 @@ function CampoPage() {
         })
         .filter((point): point is NonNullable<typeof point> => Boolean(point)),
     [recordsByModule.pragas],
+  );
+
+  const talhaoCenters = useMemo(() => {
+    return new Map(
+      talhoes
+        .map((item) => {
+          const center = centroid(parseRoute(item.payload.coordenadas));
+          return item.payload.talhao && center ? [item.payload.talhao, center] : null;
+        })
+        .filter((item): item is [string, { lat?: number; lng?: number; x?: number; y?: number }] =>
+          Boolean(item),
+        ),
+    );
+  }, [talhoes]);
+
+  const campoMapPoints: MapPoint[] = useMemo(
+    () =>
+      campoModules.flatMap((module) =>
+        (recordsByModule[module.id] ?? [])
+          .map((item) => {
+            const directPoint =
+              parseFocus(item.payload.gps) ??
+              parseFocus(item.payload.coordenadas) ??
+              parseFocus(item.payload.localizacao);
+            const talhaoPoint = item.payload.talhao
+              ? talhaoCenters.get(item.payload.talhao)
+              : undefined;
+            const point = directPoint ?? talhaoPoint;
+            if (!point) return null;
+
+            return {
+              id: `${module.id}-${item.id}`,
+              label: fieldTitle(module, item.payload),
+              ...point,
+              tone: fieldTone(module.id, item.payload),
+              category: module.id,
+              icon: module.id,
+              sourceModule: module.id,
+              status: item.payload.status ?? item.payload.severidade,
+              description:
+                item.payload.observacao ??
+                item.payload.tratamento ??
+                item.payload.recomendacao ??
+                module.description,
+              meta: {
+                Modulo: module.shortLabel,
+                Talhao: item.payload.talhao,
+                Status: item.payload.status,
+                Severidade: item.payload.severidade,
+                Cultura: item.payload.cultura,
+              },
+            };
+          })
+          .filter((point): point is MapPoint => Boolean(point)),
+      ),
+    [recordsByModule, talhaoCenters],
   );
 
   const hectares = talhoes.reduce((sum, item) => sum + num(item.payload.area_ha), 0);
@@ -691,11 +878,12 @@ function CampoPage() {
                 </div>
               </div>
               <CartoMap
-                variant="positron"
+                variant="satellite"
                 className="h-[380px]"
                 centerLabel="Mapa de talhões"
                 routes={routes}
-                points={pragaPoints}
+                points={campoMapPoints}
+                showLegend
                 onRouteClick={(r) => setSelectedTalhaoId(r.id)}
               />
             </div>
@@ -801,6 +989,46 @@ function CampoKpi({ label, value, hint }: { label: string; value: string; hint: 
   );
 }
 
+function CartoMap({
+  routes = [],
+  points = [],
+}: {
+  variant?: string;
+  className?: string;
+  centerLabel?: string;
+  routes?: MapRoute[];
+  points?: MapPoint[];
+  showLegend?: boolean;
+  onRouteClick?: (route: MapRoute) => void;
+}) {
+  return (
+    <section className="rounded-xl border border-border bg-background/60 p-5">
+      <div className="flex h-full min-h-[260px] flex-col justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <MapPinned className="h-4 w-4 text-primary" />
+            Mapa operacional unico
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Talhoes, insumos, pragas, clima e demais registros georreferenciados aparecem no mapa
+            principal da plataforma.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+          <CampoKpi label="Talhoes no mapa" value={String(routes.length)} hint="poligonos cadastrados" />
+          <CampoKpi label="Pontos de campo" value={String(points.length)} hint="GPS ou centro do talhao" />
+          <a
+            href="/"
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground"
+          >
+            Abrir mapa
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function CampoModuleSection({
   module,
   demoMode,
@@ -815,6 +1043,16 @@ function CampoModuleSection({
   const [editing, setEditing] = useState<FieldRecord | null>(null);
   const [payload, setPayload] = useState<Record<string, string>>(emptyPayload(module));
   const summary = moduleSummary(module, records);
+  const isInsumos = module.id === "insumos";
+  const custoPercentiles = useMemo(
+    () => (isInsumos ? buildPercentileLookup(records, "custo_hectare") : new Map<string, number>()),
+    [isInsumos, records],
+  );
+  const dosePercentiles = useMemo(
+    () => (isInsumos ? buildPercentileLookup(records, "dose") : new Map<string, number>()),
+    [isInsumos, records],
+  );
+  const fields = useMemo(() => calculatedCostFields(module.fields), [module.fields]);
 
   const createMutation = useMutation({
     mutationFn: createFieldRecord,
@@ -876,16 +1114,16 @@ function CampoModuleSection({
   const submit = () => {
     if (demoMode) return;
     if (editing) {
-      updateMutation.mutate({ id: editing.id, payload });
+      updateMutation.mutate({ id: editing.id, payload: normalizeCostPayload(payload) });
       return;
     }
-    createMutation.mutate({ module: module.id, payload });
+    createMutation.mutate({ module: module.id, payload: normalizeCostPayload(payload) });
   };
 
   const importRows = async (rows: Record<string, string>[]) => {
     if (demoMode) return toast.info("Desligue o modo DEMO para importar dados reais.");
     for (const row of rows) {
-      await createFieldRecord({ module: module.id, payload: row });
+      await createFieldRecord({ module: module.id, payload: normalizeCostPayload(row) });
     }
     void queryClient.invalidateQueries({ queryKey: ["field-records", module.id] });
   };
@@ -903,7 +1141,7 @@ function CampoModuleSection({
           </div>
         </div>
         <div className="flex gap-2">
-          <ImportRecordsButton fields={module.fields} disabled={demoMode} onImport={importRows} />
+          <ImportRecordsButton fields={fields} disabled={demoMode} onImport={importRows} />
           <button
             onClick={beginCreate}
             className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground"
@@ -923,8 +1161,14 @@ function CampoModuleSection({
         />
         <CampoKpi
           label="Automação"
-          value={module.id === "diario" ? "Offline" : "Ativa"}
-          hint="v1 funcional"
+          value={
+            isInsumos
+              ? `${custoPercentiles.size}/${dosePercentiles.size}`
+              : module.id === "diario"
+                ? "Offline"
+                : "Ativa"
+          }
+          hint={isInsumos ? "percentis custo/dose" : "v1 funcional"}
         />
       </div>
 
@@ -936,22 +1180,38 @@ function CampoModuleSection({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted-foreground">
-              {module.fields.slice(0, 5).map((field) => (
+              {fields.slice(0, 5).map((field) => (
                 <th key={field.key} className="py-3 pr-4 font-medium">
                   {field.label}
                 </th>
               ))}
+              {isInsumos && (
+                <>
+                  <th className="py-3 pr-4 font-medium">Percentil custo/ha</th>
+                  <th className="py-3 pr-4 font-medium">Percentil dose</th>
+                </>
+              )}
               <th className="py-3 text-right font-medium">Ações</th>
             </tr>
           </thead>
           <tbody>
             {records.map((recordItem) => (
               <tr key={recordItem.id} className="border-b border-border last:border-0">
-                {module.fields.slice(0, 5).map((field) => (
+                {fields.slice(0, 5).map((field) => (
                   <td key={field.key} className="py-3 pr-4 max-w-64 truncate">
                     {formatValue(recordItem.payload[field.key], field)}
                   </td>
                 ))}
+                {isInsumos && (
+                  <>
+                    <td className="py-3 pr-4 font-medium">
+                      {formatPercentile(custoPercentiles.get(recordItem.id))}
+                    </td>
+                    <td className="py-3 pr-4 font-medium">
+                      {formatPercentile(dosePercentiles.get(recordItem.id))}
+                    </td>
+                  </>
+                )}
                 <td className="py-3">
                   <div className="flex justify-end gap-2">
                     <button
@@ -982,7 +1242,7 @@ function CampoModuleSection({
             {records.length === 0 && (
               <tr>
                 <td
-                  colSpan={module.fields.slice(0, 5).length + 1}
+                  colSpan={fields.slice(0, 5).length + (isInsumos ? 3 : 1)}
                   className="py-10 text-center text-sm text-muted-foreground"
                 >
                   Nenhum registro real cadastrado neste módulo.
@@ -1000,12 +1260,14 @@ function CampoModuleSection({
             <DialogDescription>{module.label}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">
-            {module.fields.map((field) => (
+            {fields.map((field) => (
               <FieldInput
                 key={field.key}
                 field={field}
                 value={payload[field.key] ?? ""}
-                onChange={(value) => setPayload((current) => ({ ...current, [field.key]: value }))}
+                onChange={(value) =>
+                  setPayload((current) => updateCostPayload(current, field.key, value))
+                }
               />
             ))}
           </div>

@@ -52,7 +52,7 @@ type OperationAreaPageProps = {
 };
 
 function emptyPayload(module: OperationModuleConfig) {
-  return Object.fromEntries(module.fields.map((field) => [field.key, ""]));
+  return Object.fromEntries(calculatedCostFields(module.fields).map((field) => [field.key, ""]));
 }
 
 function numberValue(value: unknown) {
@@ -60,10 +60,89 @@ function numberValue(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+const totalCostKeys = [
+  "custo_total",
+  "custo",
+  "valor",
+  "valor_estimado",
+  "receita",
+  "margem",
+  "economia",
+  "cogs",
+  "co2e",
+];
+
+function hasCostSurface(fields: OperationFieldConfig[]) {
+  return fields.some((field) => totalCostKeys.includes(field.key));
+}
+
+function calculatedCostFields(fields: OperationFieldConfig[]) {
+  if (!hasCostSurface(fields)) return fields;
+  const next = [...fields];
+  const add = (field: OperationFieldConfig) => {
+    if (!next.some((item) => item.key === field.key)) next.push(field);
+  };
+  add({ key: "quantidade", label: "Quantidade", type: "number" });
+  add({ key: "unidade_base", label: "Unidade base" });
+  add({ key: "custo_total", label: "Custo total", type: "number" });
+  add({ key: "custo_unitario", label: "Custo unitario", type: "number" });
+  return next;
+}
+
+function primaryTotalKey(payload: Record<string, string>, changedKey?: string) {
+  if (changedKey && totalCostKeys.includes(changedKey)) return changedKey;
+  if (payload.custo_total) return "custo_total";
+  return totalCostKeys.find((key) => payload[key]) ?? "custo_total";
+}
+
+function roundCost(value: number) {
+  return Number.isFinite(value) ? String(Math.round(value * 10000) / 10000) : "";
+}
+
+function normalizeCostPayload(payload: Record<string, string>, changedKey?: string) {
+  const next = { ...payload };
+  const hasCost = Object.keys(next).some((key) => totalCostKeys.includes(key) || key === "custo_unitario");
+  if (!hasCost) return next;
+
+  const quantity = numberValue(next.quantidade);
+  const totalKey = primaryTotalKey(next, changedKey);
+  if (changedKey && totalCostKeys.includes(changedKey) && changedKey !== "custo_total") {
+    next.custo_total = next[changedKey] ?? "";
+  }
+
+  const total = numberValue(next.custo_total || next[totalKey]);
+  const unit = numberValue(next.custo_unitario);
+  if (quantity <= 0) return next;
+
+  if (changedKey === "custo_unitario" && unit > 0) {
+    next.custo_total = roundCost(unit * quantity);
+    return next;
+  }
+
+  if (
+    (changedKey === "quantidade" ||
+      changedKey === "custo_total" ||
+      totalCostKeys.includes(changedKey ?? "")) &&
+    total > 0
+  ) {
+    next.custo_unitario = roundCost(total / quantity);
+  }
+  return next;
+}
+
+function updateCostPayload(
+  current: Record<string, string>,
+  key: string,
+  value: string,
+): Record<string, string> {
+  return normalizeCostPayload({ ...current, [key]: value }, key);
+}
+
 function exportCsv(area: string, module: OperationModuleConfig, records: OperationRecord[]) {
-  const header = module.fields.map((field) => field.label);
+  const fields = calculatedCostFields(module.fields);
+  const header = fields.map((field) => field.label);
   const lines = records.map((recordItem) =>
-    module.fields.map((field) => recordItem.payload[field.key] ?? ""),
+    fields.map((field) => recordItem.payload[field.key] ?? ""),
   );
   const csv = [header, ...lines]
     .map((line) => line.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
@@ -315,6 +394,7 @@ function ModuleTab({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<OperationRecord | null>(null);
   const [payload, setPayload] = useState<Record<string, string>>(emptyPayload(module));
+  const fields = useMemo(() => calculatedCostFields(module.fields), [module.fields]);
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["operation-records", area, module.id] });
@@ -365,14 +445,14 @@ function ModuleTab({
 
   const submit = () => {
     if (demoMode) return;
-    if (editing) updateMutation.mutate({ id: editing.id, payload });
-    else createMutation.mutate({ area, module: module.id, payload });
+    if (editing) updateMutation.mutate({ id: editing.id, payload: normalizeCostPayload(payload) });
+    else createMutation.mutate({ area, module: module.id, payload: normalizeCostPayload(payload) });
   };
 
   const importRows = async (rows: Record<string, string>[]) => {
     if (demoMode) return toast.info("Desligue o modo DEMO para importar dados reais.");
     for (const row of rows) {
-      await createOperationRecord({ area, module: module.id, payload: row });
+      await createOperationRecord({ area, module: module.id, payload: normalizeCostPayload(row) });
     }
     toast.success(`${rows.length} registro(s) importado(s).`);
     invalidate();
@@ -392,7 +472,7 @@ function ModuleTab({
         </div>
         <div className="flex gap-2">
           <ImportRecordsButton
-            fields={module.fields}
+            fields={fields}
             disabled={demoMode}
             onImport={importRows}
             className="h-9 rounded-lg border border-border px-3 text-sm"
@@ -424,7 +504,7 @@ function ModuleTab({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted-foreground">
-              {module.fields.slice(0, 6).map((field) => (
+              {fields.slice(0, 6).map((field) => (
                 <th key={field.key} className="py-3 pr-4 font-medium">
                   {field.label}
                 </th>
@@ -435,7 +515,7 @@ function ModuleTab({
           <tbody>
             {records.map((recordItem) => (
               <tr key={recordItem.id} className="border-b border-border last:border-0">
-                {module.fields.slice(0, 6).map((field) => (
+                {fields.slice(0, 6).map((field) => (
                   <td key={field.key} className="py-3 pr-4">
                     {recordItem.payload[field.key] || "-"}
                   </td>
@@ -482,7 +562,7 @@ function ModuleTab({
             <DialogDescription>{module.label}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
-            {module.fields.map((field) => (
+            {fields.map((field) => (
               <label key={field.key} className="grid gap-1.5 text-sm">
                 <span className="text-muted-foreground">
                   {field.label}
@@ -494,7 +574,9 @@ function ModuleTab({
                   <textarea
                     value={payload[field.key] ?? ""}
                     onChange={(event) =>
-                      setPayload((current) => ({ ...current, [field.key]: event.target.value }))
+                      setPayload((current) =>
+                        updateCostPayload(current, field.key, event.target.value),
+                      )
                     }
                     className="min-h-24 rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
                   />
@@ -504,7 +586,9 @@ function ModuleTab({
                     step={field.type === "number" ? "any" : undefined}
                     value={payload[field.key] ?? ""}
                     onChange={(event) =>
-                      setPayload((current) => ({ ...current, [field.key]: event.target.value }))
+                      setPayload((current) =>
+                        updateCostPayload(current, field.key, event.target.value),
+                      )
                     }
                     className="h-10 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
                   />

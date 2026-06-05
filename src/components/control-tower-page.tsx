@@ -17,6 +17,8 @@ import {
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
@@ -249,7 +251,7 @@ function pointLayer(point: MapPoint) {
 }
 
 export function ControlTowerPage() {
-  const { snapshot, loading, demoMode } = useConnectedAgroData();
+  const { snapshot, loading, demoMode, lastUpdatedAt } = useConnectedAgroData();
   const [period, setPeriod] = useState<PeriodValue>(defaultPeriod());
   const [selectedLayers, setSelectedLayers] = useState<string[]>([
     "clientes",
@@ -265,6 +267,34 @@ export function ControlTowerPage() {
   );
   const filteredRoutes = selectedLayers.includes("rotas") ? model.routes : [];
   const dangerAlerts = model.alerts.filter((item) => item.severity === "danger").length;
+  const lastSync = lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString("pt-BR") : "--:--";
+  const moduleVolume = useMemo(
+    () => [
+      {
+        label: "Logistica",
+        valor: snapshot.operations.filter((item) => item.area === "logistica").length,
+      },
+      { label: "Financeiro", valor: snapshot.financial.length },
+      { label: "Campo", valor: snapshot.field.length },
+      {
+        label: "Pecuaria",
+        valor: snapshot.operations.filter((item) => item.area === "pecuaria").length,
+      },
+      {
+        label: "COGS",
+        valor: snapshot.operations.filter((item) => item.area === "cogs").length,
+      },
+    ],
+    [snapshot],
+  );
+  const alertVolume = useMemo(() => {
+    const grouped = new Map<string, number>();
+    model.alerts.forEach((alert) => {
+      const source = alert.source.split("/")[0] || "outros";
+      grouped.set(source, (grouped.get(source) ?? 0) + 1);
+    });
+    return Array.from(grouped.entries()).map(([label, valor]) => ({ label, valor }));
+  }, [model.alerts]);
 
   const toggleLayer = (layer: string) => {
     setSelectedLayers((current) =>
@@ -287,6 +317,10 @@ export function ControlTowerPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-card px-3 text-xs text-muted-foreground">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-success" />
+            Tempo real · {lastSync}
+          </div>
           <PeriodPicker value={period} onChange={setPeriod} />
           <button
             onClick={() => exportCsv(model)}
@@ -456,6 +490,48 @@ export function ControlTowerPage() {
                 Nenhum alerta crítico no snapshot atual.
               </div>
             )}
+          </div>
+        </section>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+          <div className="mb-4">
+            <h2 className="font-semibold">Volume conectado por módulo</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Registros consolidados do snapshot em tempo real.
+            </p>
+          </div>
+          <div className="h-64">
+            <ResponsiveContainer>
+              <BarChart data={moduleVolume}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                <XAxis dataKey="label" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip />
+                <Bar dataKey="valor" fill="var(--color-primary)" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+          <div className="mb-4">
+            <h2 className="font-semibold">Alertas por origem</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Priorização cruzada entre financeiro, operação e campo.
+            </p>
+          </div>
+          <div className="h-64">
+            <ResponsiveContainer>
+              <BarChart data={alertVolume.length ? alertVolume : [{ label: "Sem alertas", valor: 0 }]}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                <XAxis dataKey="label" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis allowDecimals={false} fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip />
+                <Bar dataKey="valor" fill="var(--color-chart-4)" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </section>
       </div>

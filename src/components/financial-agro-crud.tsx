@@ -435,7 +435,81 @@ function formatValue(value: string | undefined, field?: FieldConfig) {
 }
 
 function emptyPayload(module: ModuleConfig) {
-  return Object.fromEntries(module.fields.map((field) => [field.key, ""]));
+  return Object.fromEntries(calculatedCostFields(module.fields).map((field) => [field.key, ""]));
+}
+
+const totalCostKeys = [
+  "custo_total",
+  "custo",
+  "valor",
+  "receita",
+  "saldo_devedor",
+  "parcela",
+  "real",
+  "planejado",
+  "valor_ha",
+];
+
+function hasCostSurface(fields: FieldConfig[]) {
+  return fields.some((field) => totalCostKeys.includes(field.key));
+}
+
+function calculatedCostFields(fields: FieldConfig[]) {
+  if (!hasCostSurface(fields)) return fields;
+  const next = [...fields];
+  const add = (field: FieldConfig) => {
+    if (!next.some((item) => item.key === field.key)) next.push(field);
+  };
+  add({ key: "quantidade", label: "Quantidade", type: "number" });
+  add({ key: "unidade_base", label: "Unidade base" });
+  add({ key: "custo_total", label: "Custo total", type: "number" });
+  add({ key: "custo_unitario", label: "Custo unitario", type: "number" });
+  return next;
+}
+
+function primaryTotalKey(payload: Record<string, string>, changedKey?: string) {
+  if (changedKey && totalCostKeys.includes(changedKey)) return changedKey;
+  if (payload.custo_total) return "custo_total";
+  return totalCostKeys.find((key) => payload[key]) ?? "custo_total";
+}
+
+function roundCost(value: number) {
+  return Number.isFinite(value) ? String(Math.round(value * 10000) / 10000) : "";
+}
+
+function normalizeCostPayload(payload: Record<string, string>, changedKey?: string) {
+  const next = { ...payload };
+  if (!Object.keys(next).some((key) => totalCostKeys.includes(key) || key === "custo_unitario")) {
+    return next;
+  }
+
+  const quantity = num(next.quantidade);
+  const totalKey = primaryTotalKey(next, changedKey);
+  if (changedKey && totalCostKeys.includes(changedKey) && changedKey !== "custo_total") {
+    next.custo_total = next[changedKey] ?? "";
+  }
+
+  const total = num(next.custo_total || next[totalKey]);
+  const unit = num(next.custo_unitario);
+  if (quantity <= 0) return next;
+
+  if (changedKey === "custo_unitario" && unit > 0) {
+    next.custo_total = roundCost(unit * quantity);
+    return next;
+  }
+
+  if ((changedKey === "quantidade" || changedKey === "custo_total" || totalCostKeys.includes(changedKey ?? "")) && total > 0) {
+    next.custo_unitario = roundCost(total / quantity);
+  }
+  return next;
+}
+
+function updateCostPayload(
+  current: Record<string, string>,
+  key: string,
+  value: string,
+): Record<string, string> {
+  return normalizeCostPayload({ ...current, [key]: value }, key);
 }
 
 function moduleSummary(moduleId: string, records: FinancialRecord[]) {
@@ -799,6 +873,8 @@ function ModuleSection({
   const [editingCost, setEditingCost] = useState<FinancialRecord | null>(null);
   const [costPayload, setCostPayload] = useState<Record<string, string>>(emptyPayload(costsModule));
   const summary = moduleSummary(module.id, records);
+  const fields = useMemo(() => calculatedCostFields(module.fields), [module.fields]);
+  const costFields = useMemo(() => calculatedCostFields(costsModule.fields), [costsModule.fields]);
 
   const createMutation = useMutation({
     mutationFn: createFinancialRecord,
@@ -901,25 +977,25 @@ function ModuleSection({
   const submit = () => {
     if (demoMode) return;
     if (editing) {
-      updateMutation.mutate({ id: editing.id, payload });
+      updateMutation.mutate({ id: editing.id, payload: normalizeCostPayload(payload) });
       return;
     }
-    createMutation.mutate({ module: module.id, payload });
+    createMutation.mutate({ module: module.id, payload: normalizeCostPayload(payload) });
   };
 
   const submitCost = () => {
     if (demoMode) return;
     if (editingCost) {
-      updateCostMutation.mutate({ id: editingCost.id, payload: costPayload });
+      updateCostMutation.mutate({ id: editingCost.id, payload: normalizeCostPayload(costPayload) });
       return;
     }
-    createCostMutation.mutate({ module: "custos", payload: costPayload });
+    createCostMutation.mutate({ module: "custos", payload: normalizeCostPayload(costPayload) });
   };
 
   const importRows = async (rows: Record<string, string>[]) => {
     if (demoMode) return toast.info("Desligue o modo DEMO para importar dados reais.");
     for (const row of rows) {
-      await createFinancialRecord({ module: module.id, payload: row });
+      await createFinancialRecord({ module: module.id, payload: normalizeCostPayload(row) });
     }
     void queryClient.invalidateQueries({ queryKey: ["financial-records", module.id] });
   };
@@ -939,7 +1015,7 @@ function ModuleSection({
           </div>
         </div>
         <div className="flex gap-2">
-          <ImportRecordsButton fields={module.fields} disabled={demoMode} onImport={importRows} />
+          <ImportRecordsButton fields={fields} disabled={demoMode} onImport={importRows} />
           <button
             onClick={beginCreate}
             className="h-9 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground"
@@ -998,7 +1074,7 @@ function ModuleSection({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted-foreground">
-              {module.fields.map((field) => (
+              {fields.map((field) => (
                 <th key={field.key} className="py-3 pr-4 font-medium">
                   {field.label}
                 </th>
@@ -1009,7 +1085,7 @@ function ModuleSection({
           <tbody>
             {records.map((recordItem) => (
               <tr key={recordItem.id} className="border-b border-border last:border-0">
-                {module.fields.map((field) => (
+                {fields.map((field) => (
                   <td key={field.key} className="py-3 pr-4">
                     {formatValue(recordItem.payload[field.key], field)}
                   </td>
@@ -1045,7 +1121,7 @@ function ModuleSection({
             {records.length === 0 && (
               <tr>
                 <td
-                  colSpan={module.fields.length + 1}
+                  colSpan={fields.length + 1}
                   className="py-10 text-center text-sm text-muted-foreground"
                 >
                   Nenhum registro real cadastrado neste módulo.
@@ -1063,14 +1139,14 @@ function ModuleSection({
             <DialogDescription>{module.label}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">
-            {module.fields.map((field) => (
+            {fields.map((field) => (
               <label key={field.key} className="grid gap-1.5 text-sm">
                 <span className="text-muted-foreground">{field.label}</span>
                 <input
                   type={field.type ?? "text"}
                   value={payload[field.key] ?? ""}
                   onChange={(event) =>
-                    setPayload((current) => ({ ...current, [field.key]: event.target.value }))
+                    setPayload((current) => updateCostPayload(current, field.key, event.target.value))
                   }
                   className="h-10 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
                 />
@@ -1103,14 +1179,16 @@ function ModuleSection({
               <DialogDescription>Custos por Unidade dentro do Fluxo de Caixa</DialogDescription>
             </DialogHeader>
             <div className="grid gap-3">
-              {costsModule.fields.map((field) => (
+              {costFields.map((field) => (
                 <label key={field.key} className="grid gap-1.5 text-sm">
                   <span className="text-muted-foreground">{field.label}</span>
                   <input
                     type={field.type ?? "text"}
                     value={costPayload[field.key] ?? ""}
                     onChange={(event) =>
-                      setCostPayload((current) => ({ ...current, [field.key]: event.target.value }))
+                      setCostPayload((current) =>
+                        updateCostPayload(current, field.key, event.target.value),
+                      )
                     }
                     className="h-10 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
                   />

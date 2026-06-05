@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ControlTowerPage } from "@/components/control-tower-page";
+import { UnifiedMapPage } from "@/components/unified-map-page";
 
 export const Route = createFileRoute("/torre-de-controle")({
   head: () => ({
@@ -12,5 +12,5 @@ export const Route = createFileRoute("/torre-de-controle")({
       },
     ],
   }),
-  component: ControlTowerPage,
+  component: UnifiedMapPage,
 });

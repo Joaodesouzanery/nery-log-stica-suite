@@ -64,7 +64,75 @@ export type CogsModel = {
   scenarios: Array<Record<string, string | number>>;
 };
 
+export type UnifiedMapModel = {
+  points: MapPoint[];
+  routes: MapRoute[];
+  kpis: Array<{ label: string; value: string | number; tone?: MapPoint["tone"] }>;
+  alerts: ControlAlert[];
+  moduleCounts: Array<{ id: string; label: string; value: number; href: string; tone: MapPoint["tone"] }>;
+  lastUpdatedAt?: number;
+};
+
 const operationAreas = ["logistica", "pecuaria", "sustentabilidade", "inteligencia", "cogs"];
+
+const unifiedModules = [
+  {
+    id: "logistica",
+    label: "Logistica",
+    href: "/logistica",
+    tone: "primary" as const,
+    lat: -23.55,
+    lng: -46.63,
+  },
+  {
+    id: "financeiro",
+    label: "Financeiro",
+    href: "/financeiro",
+    tone: "success" as const,
+    lat: -15.78,
+    lng: -47.93,
+  },
+  {
+    id: "campo",
+    label: "Campo",
+    href: "/campo",
+    tone: "success" as const,
+    lat: -22.9,
+    lng: -47.06,
+  },
+  {
+    id: "pecuaria",
+    label: "Pecuaria",
+    href: "/pecuaria",
+    tone: "info" as const,
+    lat: -19.92,
+    lng: -43.94,
+  },
+  {
+    id: "sustentabilidade",
+    label: "Sustentabilidade",
+    href: "/sustentabilidade",
+    tone: "success" as const,
+    lat: -3.1,
+    lng: -60.02,
+  },
+  {
+    id: "inteligencia",
+    label: "Inteligencia",
+    href: "/inteligencia",
+    tone: "info" as const,
+    lat: -22.91,
+    lng: -43.17,
+  },
+  {
+    id: "cogs",
+    label: "Otimizacao COGS",
+    href: "/otimizacao-cogs",
+    tone: "warning" as const,
+    lat: -25.43,
+    lng: -49.27,
+  },
+];
 
 const demoSnapshot: ConnectedAgroSnapshot = {
   financial: [
@@ -329,6 +397,7 @@ export function useConnectedAgroData() {
       : (query.data ?? { financial: [], operations: [], field: [] }),
     loading: !demoMode && query.isLoading,
     demoMode,
+    lastUpdatedAt: demoMode ? Date.now() : query.dataUpdatedAt,
   };
 }
 
@@ -605,6 +674,198 @@ function buildNetworkMap(snapshot: ConnectedAgroSnapshot) {
     });
 
   return { points, routes };
+}
+
+function moduleRecordCount(snapshot: ConnectedAgroSnapshot, moduleId: string) {
+  if (moduleId === "financeiro") return snapshot.financial.length;
+  if (moduleId === "campo") return snapshot.field.length;
+  return snapshot.operations.filter((item) => item.area === moduleId).length;
+}
+
+function moduleAlertCount(alerts: ControlAlert[], moduleId: string) {
+  const prefix = moduleId === "financeiro" ? "financeiro" : moduleId === "campo" ? "campo" : moduleId;
+  return alerts.filter((alert) => alert.source.startsWith(prefix)).length;
+}
+
+function firstText(payload: Record<string, string>, keys: string[]) {
+  const key = keys.find((item) => payload[item]);
+  return key ? payload[key] : undefined;
+}
+
+function recordCoord(payload: Record<string, string>) {
+  return (
+    latLngFrom(payload) ??
+    latLngFrom(payload, "atual_lat", "atual_lng") ??
+    latLngFrom(payload, "origem_lat", "origem_lng") ??
+    latLngFrom(payload, "destino_lat", "destino_lng") ??
+    gpsFrom(payload.gps)
+  );
+}
+
+function operationHref(area: string) {
+  if (area === "cogs") return "/otimizacao-cogs";
+  return `/${area}`;
+}
+
+function operationLabel(area: string) {
+  return unifiedModules.find((item) => item.id === area)?.label ?? area;
+}
+
+function operationTone(area: string, status?: string): MapPoint["tone"] {
+  if (statusSeverity(status) === "danger") return "danger";
+  if (statusSeverity(status) === "warning") return "warning";
+  return unifiedModules.find((item) => item.id === area)?.tone ?? "primary";
+}
+
+export function buildUnifiedMapModel(
+  snapshot: ConnectedAgroSnapshot,
+  lastUpdatedAt?: number,
+): UnifiedMapModel {
+  const control = buildControlTowerModel(snapshot);
+  const cogs = buildCogsModel(snapshot);
+  const alerts = buildControlAlerts(snapshot);
+
+  const moduleCounts = unifiedModules.map((module) => ({
+    id: module.id,
+    label: module.label,
+    value: moduleRecordCount(snapshot, module.id),
+    href: module.href,
+    tone: module.tone,
+  }));
+
+  const aggregatePoints: MapPoint[] = unifiedModules.map((module) => {
+    const count = moduleRecordCount(snapshot, module.id);
+    const alertas = moduleAlertCount(alerts, module.id);
+    return {
+      id: `module-${module.id}`,
+      label: module.label,
+      lat: module.lat,
+      lng: module.lng,
+      tone: alertas ? "warning" : module.tone,
+      moduleId: module.id,
+      moduleLabel: module.label,
+      iconKey: module.id,
+      href: module.href,
+      summary:
+        count > 0
+          ? `${count} registros conectados neste modulo.`
+          : "Modulo sem registros reais no snapshot atual.",
+      metrics: {
+        Registros: count,
+        Alertas: alertas,
+      },
+      meta: {
+        Tipo: "Resumo do modulo",
+      },
+    };
+  });
+
+  const logisticsPoints = control.points.map((point) => ({
+    ...point,
+    moduleId: point.id.startsWith("field-") ? "campo" : "logistica",
+    moduleLabel: point.id.startsWith("field-") ? "Campo" : "Logistica",
+    iconKey: point.id.startsWith("field-") ? "campo" : "logistica",
+    href: point.id.startsWith("field-") ? "/campo" : "/logistica",
+    summary: point.description ?? point.caption ?? "Registro operacional georreferenciado.",
+  }));
+
+  const operationPoints: MapPoint[] = snapshot.operations
+    .filter((item) => item.area !== "logistica")
+    .map((item) => {
+      const coord = recordCoord(item.payload);
+      if (!coord) return null;
+      const label =
+        firstText(item.payload, [
+          "codigo",
+          "nome",
+          "identificacao",
+          "animal_lote",
+          "produto",
+          "atividade",
+          "evento",
+          "etapa",
+          "status",
+        ]) ?? item.module;
+      return {
+        id: `op-${item.area}-${item.id}`,
+        label,
+        ...coord,
+        tone: operationTone(item.area, item.payload.status),
+        moduleId: item.area,
+        moduleLabel: operationLabel(item.area),
+        iconKey: item.area,
+        href: operationHref(item.area),
+        recordId: item.id,
+        recordModule: item.module,
+        status: item.payload.status,
+        summary: item.payload.observacao ?? item.payload.descricao ?? item.payload.status,
+        metrics: {
+          Modulo: item.module,
+          Valor: item.payload.valor ?? item.payload.valor_estimado ?? item.payload.custo,
+        },
+      } as MapPoint;
+    })
+    .filter((point): point is MapPoint => Boolean(point));
+
+  const fieldPoints: MapPoint[] = snapshot.field
+    .map((item) => {
+      const coord = recordCoord(item.payload);
+      if (!coord) return null;
+      const label =
+        firstText(item.payload, [
+          "talhao",
+          "ocorrencia",
+          "titulo",
+          "insumo",
+          "maquina",
+          "lote",
+          "cultura",
+          "status",
+        ]) ?? item.module;
+      const severity = statusSeverity(item.payload.status ?? item.payload.severidade);
+      return {
+        id: `field-unified-${item.id}`,
+        label,
+        ...coord,
+        tone: severity === "danger" ? "danger" : severity === "warning" ? "warning" : "success",
+        moduleId: "campo",
+        moduleLabel: "Campo",
+        iconKey: item.module || "campo",
+        href: "/campo",
+        recordId: item.id,
+        recordModule: item.module,
+        status: item.payload.status ?? item.payload.severidade,
+        summary: item.payload.observacao ?? item.payload.tratamento ?? item.payload.recomendacao,
+        metrics: {
+          Talhao: item.payload.talhao,
+          Modulo: item.module,
+        },
+      } as MapPoint;
+    })
+    .filter((point): point is MapPoint => Boolean(point));
+
+  const routes = control.routes.map((route) => ({
+    ...route,
+    moduleId: "logistica",
+    moduleLabel: "Logistica",
+    href: "/logistica",
+  }));
+
+  return {
+    points: [...aggregatePoints, ...logisticsPoints, ...operationPoints, ...fieldPoints],
+    routes,
+    alerts,
+    moduleCounts,
+    lastUpdatedAt,
+    kpis: [
+      { label: "OTIF", value: `${control.metrics.otif}%`, tone: "success" },
+      { label: "Vendas", value: money(control.metrics.vendas), tone: "success" },
+      { label: "Cargas", value: control.metrics.cargas, tone: "primary" },
+      { label: "Alertas", value: control.metrics.alertas, tone: control.metrics.alertas ? "warning" : "success" },
+      { label: "COGS", value: money(cogs.total), tone: "warning" },
+      { label: "Modulos", value: moduleCounts.filter((item) => item.value > 0).length, tone: "info" },
+    ],
+  };
 }
 
 export function buildCogsModel(snapshot: ConnectedAgroSnapshot): CogsModel {

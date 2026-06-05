@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
+import { QRCodeCanvas } from "qrcode.react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   createOperationRecord,
@@ -592,12 +593,35 @@ function AnimalPdfLibrary({
   );
 }
 
+function animalQrValue(recordItem: OperationRecord) {
+  return (
+    recordItem.payload.brinco_qr ||
+    recordItem.payload.identificacao ||
+    recordItem.payload.codigo ||
+    recordItem.id
+  );
+}
+
+function exportAnimalQr(recordItem: OperationRecord) {
+  const canvas = document.getElementById(`animal-qr-${recordItem.id}`) as HTMLCanvasElement | null;
+  if (!canvas) {
+    toast.error("QR Code ainda nao esta pronto para exportar.");
+    return;
+  }
+  const link = document.createElement("a");
+  const safeName = animalQrValue(recordItem).replace(/[^a-zA-Z0-9_-]/g, "_");
+  link.href = canvas.toDataURL("image/png");
+  link.download = `qr-animal-${safeName}.png`;
+  link.click();
+}
+
 function ModuleTab({ module }: { module: ModuleConfig }) {
   const { demoMode } = useDemoMode();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<OperationRecord | null>(null);
   const [payload, setPayload] = useState<Record<string, string>>(emptyPayload(module));
+  const [qrRecord, setQrRecord] = useState<OperationRecord | null>(null);
 
   const query = useQuery({
     queryKey: ["operation-records", AREA, module.id],
@@ -830,6 +854,17 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
                     <div className="flex justify-end gap-2">
                       {module.id === "animal" && (
                         <button
+                          onClick={() => setQrRecord(recordItem)}
+                          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2 text-xs hover:bg-muted"
+                          aria-label="Visualizar QR Code"
+                          title="Visualizar e exportar QR Code"
+                        >
+                          <QrCode className="h-3.5 w-3.5" />
+                          QR
+                        </button>
+                      )}
+                      {module.id === "animal" && (
+                        <button
                           onClick={() => {
                             if (recordItem.payload.pdf_url) {
                               window.open(recordItem.payload.pdf_url, "_blank", "noopener");
@@ -934,6 +969,49 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
             >
               Salvar
             </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(qrRecord)} onOpenChange={(next) => !next && setQrRecord(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>QR Code do animal</DialogTitle>
+            <DialogDescription>
+              {qrRecord?.payload.identificacao || qrRecord?.payload.brinco_qr || "Ficha animal"}
+            </DialogDescription>
+          </DialogHeader>
+          {qrRecord && (
+            <div className="grid justify-items-center gap-4 py-2">
+              <div className="rounded-xl border border-border bg-white p-4 shadow-sm">
+                <QRCodeCanvas
+                  id={`animal-qr-${qrRecord.id}`}
+                  value={animalQrValue(qrRecord)}
+                  size={220}
+                  level="H"
+                  includeMargin
+                />
+              </div>
+              <div className="max-w-full truncate rounded-md border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+                {animalQrValue(qrRecord)}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <button
+              onClick={() => setQrRecord(null)}
+              className="h-9 rounded-lg border border-border px-3 text-sm"
+            >
+              Fechar
+            </button>
+            {qrRecord && (
+              <button
+                onClick={() => exportAnimalQr(qrRecord)}
+                className="h-9 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground"
+              >
+                Exportar PNG
+              </button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

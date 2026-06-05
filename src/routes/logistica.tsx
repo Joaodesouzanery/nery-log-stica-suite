@@ -35,7 +35,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { TrackingMap, useTrackingData } from "@/components/tracking-map";
+import { useTrackingData } from "@/components/tracking-map";
 import { PeriodPicker, defaultPeriod, type PeriodValue } from "@/components/period-picker";
 import { ImportRecordsButton } from "@/components/import-records-button";
 
@@ -314,7 +314,64 @@ function record(module: string, id: string, payload: Record<string, string>): Op
 }
 
 function emptyPayload(m: ModuleConfig) {
-  return Object.fromEntries(m.fields.map((f) => [f.key, ""]));
+  return Object.fromEntries(calculatedCostFields(m.fields).map((f) => [f.key, ""]));
+}
+
+const totalCostKeys = ["custo_total", "custo", "valor", "combustivel", "pedagio"];
+
+function numberValue(value: unknown) {
+  const parsed = Number(String(value ?? "").replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function calculatedCostFields(fields: FieldConfig[]) {
+  if (!fields.some((field) => totalCostKeys.includes(field.key))) return fields;
+  const next = [...fields];
+  const add = (field: FieldConfig) => {
+    if (!next.some((item) => item.key === field.key)) next.push(field);
+  };
+  add({ key: "quantidade", label: "Quantidade", type: "number" });
+  add({ key: "unidade_base", label: "Unidade base" });
+  add({ key: "custo_total", label: "Custo total", type: "number" });
+  add({ key: "custo_unitario", label: "Custo unitario", type: "number" });
+  return next;
+}
+
+function normalizeCostPayload(payload: Record<string, string>, changedKey?: string) {
+  const next = { ...payload };
+  if (!Object.keys(next).some((key) => totalCostKeys.includes(key) || key === "custo_unitario")) {
+    return next;
+  }
+
+  if (changedKey && totalCostKeys.includes(changedKey) && changedKey !== "custo_total") {
+    next.custo_total = next[changedKey] ?? "";
+  }
+
+  const quantity = numberValue(next.quantidade);
+  const totalKey =
+    changedKey && totalCostKeys.includes(changedKey)
+      ? changedKey
+      : next.custo_total
+        ? "custo_total"
+        : totalCostKeys.find((key) => next[key]) ?? "custo_total";
+  const total = numberValue(next.custo_total || next[totalKey]);
+  const unit = numberValue(next.custo_unitario);
+  if (quantity <= 0) return next;
+
+  if (changedKey === "custo_unitario" && unit > 0) {
+    next.custo_total = String(Math.round(unit * quantity * 10000) / 10000);
+  } else if (
+    changedKey === "quantidade" ||
+    changedKey === "custo_total" ||
+    totalCostKeys.includes(changedKey ?? "")
+  ) {
+    next.custo_unitario = total > 0 ? String(Math.round((total / quantity) * 10000) / 10000) : "";
+  }
+  return next;
+}
+
+function updateCostPayload(current: Record<string, string>, key: string, value: string) {
+  return normalizeCostPayload({ ...current, [key]: value }, key);
 }
 
 function LogisticaPage() {
@@ -407,6 +464,28 @@ function OverviewTab() {
   );
 }
 
+function TrackingMap({ title, subtitle }: { title?: string; subtitle?: string; height?: string }) {
+  return (
+    <section className="rounded-xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">{title ?? "Mapa operacional unico"}</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {subtitle ?? "Os dados de logistica aparecem no mapa principal da plataforma."}
+          </p>
+        </div>
+        <a
+          href="/"
+          className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground"
+        >
+          <MapPin className="h-4 w-4" />
+          Abrir mapa
+        </a>
+      </div>
+    </section>
+  );
+}
+
 function OverviewCard({
   label,
   value,
@@ -430,6 +509,7 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<OperationRecord | null>(null);
   const [payload, setPayload] = useState<Record<string, string>>(emptyPayload(module));
+  const fields = useMemo(() => calculatedCostFields(module.fields), [module.fields]);
 
   const query = useQuery({
     queryKey: ["operation-records", AREA, module.id],
@@ -490,14 +570,14 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
   };
   const submit = () => {
     if (demoMode) return;
-    if (editing) updateMutation.mutate({ id: editing.id, payload });
-    else createMutation.mutate({ area: AREA, module: module.id, payload });
+    if (editing) updateMutation.mutate({ id: editing.id, payload: normalizeCostPayload(payload) });
+    else createMutation.mutate({ area: AREA, module: module.id, payload: normalizeCostPayload(payload) });
   };
 
   const importRows = async (rows: Record<string, string>[]) => {
     if (demoMode) return toast.info("Desligue o modo DEMO para importar dados reais.");
     for (const row of rows) {
-      await createOperationRecord({ area: AREA, module: module.id, payload: row });
+      await createOperationRecord({ area: AREA, module: module.id, payload: normalizeCostPayload(row) });
     }
     invalidate();
   };
@@ -507,8 +587,8 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
       toast.info("Nenhum registro para exportar.");
       return;
     }
-    const header = module.fields.map((f) => f.label);
-    const lines = records.map((r) => module.fields.map((f) => r.payload[f.key] ?? ""));
+    const header = fields.map((f) => f.label);
+    const lines = records.map((r) => fields.map((f) => r.payload[f.key] ?? ""));
     const csv = [header, ...lines]
       .map((line) => line.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
       .join("\n");
@@ -536,7 +616,7 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
           </div>
         </div>
         <div className="flex gap-2">
-          <ImportRecordsButton fields={module.fields} disabled={demoMode} onImport={importRows} />
+          <ImportRecordsButton fields={fields} disabled={demoMode} onImport={importRows} />
           <button
             onClick={handleExport}
             className="h-9 rounded-lg border border-border px-3 text-sm flex items-center gap-2 hover:bg-muted"
@@ -558,7 +638,7 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted-foreground">
-              {module.fields.slice(0, 6).map((f) => (
+              {fields.slice(0, 6).map((f) => (
                 <th key={f.key} className="py-3 pr-4 font-medium">
                   {f.label}
                 </th>
@@ -577,7 +657,7 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
             {!loading &&
               records.map((rec) => (
                 <tr key={rec.id} className="border-b border-border last:border-0">
-                  {module.fields.slice(0, 6).map((f) => (
+                  {fields.slice(0, 6).map((f) => (
                     <td key={f.key} className="py-3 pr-4">
                       {rec.payload[f.key] ?? "-"}
                     </td>
@@ -624,7 +704,7 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
             <DialogDescription>{module.label}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
-            {module.fields.map((f) => (
+            {fields.map((f) => (
               <label key={f.key} className="grid gap-1.5 text-sm">
                 <span className="text-muted-foreground">
                   {f.label}
@@ -633,7 +713,9 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
                 {f.type === "textarea" ? (
                   <textarea
                     value={payload[f.key] ?? ""}
-                    onChange={(e) => setPayload((cur) => ({ ...cur, [f.key]: e.target.value }))}
+                    onChange={(e) =>
+                      setPayload((cur) => updateCostPayload(cur, f.key, e.target.value))
+                    }
                     className="min-h-24 rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
                   />
                 ) : (
@@ -641,7 +723,9 @@ function ModuleTab({ module }: { module: ModuleConfig }) {
                     type={f.type ?? "text"}
                     step={f.type === "number" ? "any" : undefined}
                     value={payload[f.key] ?? ""}
-                    onChange={(e) => setPayload((cur) => ({ ...cur, [f.key]: e.target.value }))}
+                    onChange={(e) =>
+                      setPayload((cur) => updateCostPayload(cur, f.key, e.target.value))
+                    }
                     className="h-10 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
                   />
                 )}
