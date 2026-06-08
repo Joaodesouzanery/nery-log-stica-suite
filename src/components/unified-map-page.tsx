@@ -85,7 +85,7 @@ export function UnifiedMapPage() {
         </div>
       </div>
 
-      <div className="absolute bottom-4 left-4 z-20 max-w-[calc(100vw-2rem)] rounded-lg border border-white/15 bg-slate-950/86 p-2 shadow-2xl backdrop-blur lg:max-w-[calc(100vw-24rem)]">
+      <div className="pointer-events-none absolute bottom-4 left-4 z-20 max-w-[calc(100vw-2rem)] rounded-lg border border-white/15 bg-slate-950/86 p-2 shadow-2xl backdrop-blur lg:max-w-[calc(100vw-24rem)]">
         <div className="flex max-w-full flex-wrap gap-1.5">
           {model.moduleCounts.map((module) => {
             const Icon = moduleIcon[module.id as keyof typeof moduleIcon] ?? AlertTriangle;
@@ -93,7 +93,7 @@ export function UnifiedMapPage() {
               <a
                 key={module.id}
                 href={module.href}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 bg-white/10 px-2 text-[11px] font-medium text-slate-200 transition hover:bg-white/15"
+                className="pointer-events-auto inline-flex h-8 items-center gap-1.5 rounded-md border border-white/10 bg-white/10 px-2 text-[11px] font-medium text-slate-200 transition hover:bg-white/15"
               >
                 <Icon className="h-3.5 w-3.5 text-blue-300" />
                 {module.label}
@@ -106,7 +106,7 @@ export function UnifiedMapPage() {
         </div>
       </div>
 
-      <div className="absolute bottom-4 right-4 z-20 hidden w-80 rounded-lg border border-white/15 bg-slate-950/86 p-3 shadow-2xl backdrop-blur lg:block">
+      <div className="pointer-events-none absolute bottom-4 right-4 z-20 hidden w-80 rounded-lg border border-white/15 bg-slate-950/86 p-3 shadow-2xl backdrop-blur lg:block">
         <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
           <AlertTriangle className="h-4 w-4 text-amber-300" />
           Alertas recentes

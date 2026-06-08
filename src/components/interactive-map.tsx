@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import maplibregl, {
-  type GeoJSONSource,
-  type LngLatBoundsLike,
-  type Map as MapLibreMap,
-  type MapLayerMouseEvent,
+import type {
+  GeoJSONSource,
+  LngLatBoundsLike,
+  MapGeoJSONFeature,
+  Map as MapLibreMap,
+  MapLayerMouseEvent,
+  StyleSpecification,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Navigation, RadioTower } from "lucide-react";
@@ -150,7 +152,7 @@ function lngLatFrom(
   return null;
 }
 
-function mapStyle(variant: InteractiveMapVariant): maplibregl.StyleSpecification {
+function mapStyle(variant: InteractiveMapVariant): StyleSpecification {
   if (variant === "satellite") {
     return {
       version: 8,
@@ -189,6 +191,34 @@ function mapStyle(variant: InteractiveMapVariant): maplibregl.StyleSpecification
       },
     },
     layers: [{ id: "carto", type: "raster", source: "carto" }],
+  };
+}
+
+function fallbackRasterStyle(): StyleSpecification {
+  return {
+    version: 8,
+    glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+    sources: {
+      osmFallback: {
+        type: "raster",
+        tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+        tileSize: 256,
+        attribution: "&copy; OpenStreetMap contributors",
+      },
+    },
+    layers: [
+      {
+        id: "osm-fallback",
+        type: "raster",
+        source: "osmFallback",
+        paint: {
+          "raster-brightness-min": 0.04,
+          "raster-brightness-max": 0.38,
+          "raster-contrast": 0.15,
+          "raster-saturation": -0.75,
+        },
+      },
+    ],
   };
 }
 
@@ -251,7 +281,7 @@ function popupHtml(title: string, description?: string, rows: Array<[string, unk
       <div class="nery-map-popup-title">${escapeHtml(title)}</div>
       ${description ? `<div class="nery-map-popup-desc">${escapeHtml(description)}</div>` : ""}
       ${rowHtml ? `<div class="nery-map-popup-list">${rowHtml}</div>` : ""}
-      ${href ? `<a class="nery-map-popup-link" href="${escapeHtml(href)}">Abrir módulo</a>` : ""}
+      ${href ? `<a class="nery-map-popup-link" href="${escapeHtml(href)}">Abrir modulo</a>` : ""}
     </div>
   `;
 }
@@ -371,25 +401,33 @@ function parseMeta(value: unknown) {
   }
 }
 
-function featureRows(feature: maplibregl.MapGeoJSONFeature) {
+function featureRows(feature: MapGeoJSONFeature) {
   return parseMeta(feature.properties?.meta);
+}
+
+function addLayerIfMissing(map: MapLibreMap, layer: Parameters<MapLibreMap["addLayer"]>[0]) {
+  if (!map.getLayer(layer.id)) map.addLayer(layer);
 }
 
 function addLayers(map: MapLibreMap) {
   addModuleIcons(map);
-  map.addSource("routes", {
-    type: "geojson",
-    data: { type: "FeatureCollection", features: [] },
-  });
-  map.addSource("points", {
-    type: "geojson",
-    data: { type: "FeatureCollection", features: [] },
-    cluster: true,
-    clusterMaxZoom: 14,
-    clusterRadius: 56,
-  });
+  if (!map.getSource("routes")) {
+    map.addSource("routes", {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] },
+    });
+  }
+  if (!map.getSource("points")) {
+    map.addSource("points", {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] },
+      cluster: true,
+      clusterMaxZoom: 14,
+      clusterRadius: 56,
+    });
+  }
 
-  map.addLayer({
+  addLayerIfMissing(map, {
     id: "route-fill",
     type: "fill",
     source: "routes",
@@ -400,7 +438,7 @@ function addLayers(map: MapLibreMap) {
     },
   });
 
-  map.addLayer({
+  addLayerIfMissing(map, {
     id: "route-outline",
     type: "line",
     source: "routes",
@@ -412,7 +450,7 @@ function addLayers(map: MapLibreMap) {
     },
   });
 
-  map.addLayer({
+  addLayerIfMissing(map, {
     id: "route-line",
     type: "line",
     source: "routes",
@@ -425,7 +463,7 @@ function addLayers(map: MapLibreMap) {
     },
   });
 
-  map.addLayer({
+  addLayerIfMissing(map, {
     id: "clusters",
     type: "circle",
     source: "points",
@@ -438,7 +476,7 @@ function addLayers(map: MapLibreMap) {
     },
   });
 
-  map.addLayer({
+  addLayerIfMissing(map, {
     id: "cluster-count",
     type: "symbol",
     source: "points",
@@ -452,7 +490,7 @@ function addLayers(map: MapLibreMap) {
     paint: { "text-color": "#ffffff" },
   });
 
-  map.addLayer({
+  addLayerIfMissing(map, {
     id: "unclustered-point-halo",
     type: "circle",
     source: "points",
@@ -466,7 +504,7 @@ function addLayers(map: MapLibreMap) {
     },
   });
 
-  map.addLayer({
+  addLayerIfMissing(map, {
     id: "unclustered-point",
     type: "symbol",
     source: "points",
@@ -480,7 +518,7 @@ function addLayers(map: MapLibreMap) {
     },
   });
 
-  map.addLayer({
+  addLayerIfMissing(map, {
     id: "point-label",
     type: "symbol",
     source: "points",
@@ -536,131 +574,185 @@ export function InteractiveMap({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const loadedRef = useRef(false);
+  const fallbackAppliedRef = useRef(false);
   const [lastUpdated, setLastUpdated] = useState(() => new Date());
+  const [mapStatus, setMapStatus] = useState<"loading" | "ready" | "fallback" | "error">("loading");
 
   const pointData = useMemo(() => pointCollection(points, fallbackBounds), [points, fallbackBounds]);
   const routeData = useMemo(() => routeCollection(routes, fallbackBounds), [routes, fallbackBounds]);
   const pointLookup = useMemo(() => new Map(points.map((point) => [point.id, point])), [points]);
   const routeLookup = useMemo(() => new Map(routes.map((route) => [route.id, route])), [routes]);
   const callbacksRef = useRef({ onPointClick, onRouteClick, pointLookup, routeLookup });
+  const dataRef = useRef({ pointData, routeData, fitToData });
 
   useEffect(() => {
     callbacksRef.current = { onPointClick, onRouteClick, pointLookup, routeLookup };
   }, [onPointClick, onRouteClick, pointLookup, routeLookup]);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    dataRef.current = { pointData, routeData, fitToData };
+  }, [fitToData, pointData, routeData]);
 
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: mapStyle(variant),
-      center: [-51.9253, -14.235],
-      zoom: variant === "satellite" ? 12 : 3.4,
-      minZoom: 2,
-      maxZoom: 18,
-      attributionControl: attribution,
-      interactive,
-    });
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
 
-    mapRef.current = map;
-    const resizeObserver = new ResizeObserver(() => map.resize());
-    resizeObserver.observe(containerRef.current);
+    let disposed = false;
+    let resizeObserver: ResizeObserver | undefined;
+    let map: MapLibreMap | null = null;
+    fallbackAppliedRef.current = false;
+    loadedRef.current = false;
+    setMapStatus("loading");
 
-    if (interactive) {
-      map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-left");
-      map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
-    }
-
-    map.on("load", () => {
-      loadedRef.current = true;
-      addLayers(map);
-      syncData(map, pointData, routeData, fitToData);
-    });
-
-    map.on("click", "clusters", (event: MapLayerMouseEvent) => {
-      const feature = map.queryRenderedFeatures(event.point, { layers: ["clusters"] })[0];
-      const clusterId = feature?.properties?.cluster_id;
-      const source = map.getSource("points") as GeoJSONSource | undefined;
-      if (clusterId === undefined || !source) return;
-
-      source.getClusterExpansionZoom(Number(clusterId)).then((zoom) => {
-        if (feature.geometry.type !== "Point") return;
-        map.easeTo({ center: feature.geometry.coordinates as [number, number], zoom });
+    const safeResize = () => {
+      requestAnimationFrame(() => {
+        if (!disposed) map?.resize();
       });
-    });
+    };
 
-    function pointPopup(event: MapLayerMouseEvent) {
-      const feature = event.features?.[0];
-      if (!feature || feature.geometry.type !== "Point") return;
-      const rows = featureRows(feature);
-      const point = callbacksRef.current.pointLookup.get(String(feature.properties?.id ?? ""));
-      if (point) callbacksRef.current.onPointClick?.(point);
-      new maplibregl.Popup({ closeButton: true, maxWidth: "320px" })
-        .setLngLat(feature.geometry.coordinates as [number, number])
-        .setHTML(
-          popupHtml(
-            String(feature.properties?.label ?? "Ponto"),
-            String(
-              feature.properties?.summary ||
-                feature.properties?.description ||
-                feature.properties?.caption ||
-                "",
-            ),
-            rows,
-            String(feature.properties?.href || ""),
-          ),
-        )
-        .addTo(map);
-    }
+    void import("maplibre-gl")
+      .then(({ default: maplibregl }) => {
+        if (disposed || !containerRef.current) return;
 
-    map.on("click", "unclustered-point", pointPopup);
-    map.on("click", "unclustered-point-halo", pointPopup);
-    map.on("click", "point-label", pointPopup);
+        map = new maplibregl.Map({
+          container,
+          style: mapStyle(variant),
+          center: [-51.9253, -14.235],
+          zoom: variant === "satellite" ? 12 : 3.4,
+          minZoom: 2,
+          maxZoom: 18,
+          attributionControl: attribution,
+          interactive,
+        });
 
-    map.on("click", "route-line", routePopup);
-    map.on("click", "route-fill", routePopup);
-    map.on("click", "route-outline", routePopup);
+        mapRef.current = map;
+        resizeObserver = new ResizeObserver(safeResize);
+        resizeObserver.observe(container);
 
-    function routePopup(event: MapLayerMouseEvent) {
-      const feature = event.features?.[0];
-      if (!feature) return;
-      const route = callbacksRef.current.routeLookup.get(String(feature.properties?.id ?? ""));
-      if (route) callbacksRef.current.onRouteClick?.(route);
-      new maplibregl.Popup({ closeButton: true, maxWidth: "320px" })
-        .setLngLat(event.lngLat)
-        .setHTML(
-          popupHtml(
-            String(feature.properties?.label ?? "Rota"),
-            String(feature.properties?.description ?? ""),
-            featureRows(feature),
-            String(feature.properties?.href || ""),
-          ),
-        )
-        .addTo(map);
-    }
+        if (interactive) {
+          map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-left");
+          map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-right");
+        }
 
-    const pointerLayers = [
-      "clusters",
-      "unclustered-point",
-      "unclustered-point-halo",
-      "point-label",
-      "route-line",
-      "route-fill",
-      "route-outline",
-    ];
-    pointerLayers.forEach((layer) => {
-      map.on("mouseenter", layer, () => {
-        map.getCanvas().style.cursor = "pointer";
+        const hydrateMap = () => {
+          if (!map) return;
+          const current = dataRef.current;
+          loadedRef.current = true;
+          addLayers(map);
+          syncData(map, current.pointData, current.routeData, current.fitToData);
+          setMapStatus(fallbackAppliedRef.current ? "fallback" : "ready");
+          safeResize();
+          window.setTimeout(safeResize, 120);
+        };
+
+        map.on("load", hydrateMap);
+        map.on("style.load", hydrateMap);
+        map.on("idle", safeResize);
+        map.on("error", (event) => {
+          const message = event?.error?.message ?? "Erro ao carregar mapa";
+          if (!fallbackAppliedRef.current && variant !== "satellite" && map) {
+            fallbackAppliedRef.current = true;
+            setMapStatus("fallback");
+            console.warn("[NeryMap] Tile/style falhou; usando fallback OpenStreetMap.", message);
+            map.setStyle(fallbackRasterStyle());
+            return;
+          }
+          console.warn("[NeryMap] Falha no MapLibre.", message);
+          setMapStatus("error");
+        });
+
+        map.on("click", "clusters", (event: MapLayerMouseEvent) => {
+          if (!map) return;
+          const feature = map.queryRenderedFeatures(event.point, { layers: ["clusters"] })[0];
+          const clusterId = feature?.properties?.cluster_id;
+          const source = map.getSource("points") as GeoJSONSource | undefined;
+          if (clusterId === undefined || !source) return;
+
+          source.getClusterExpansionZoom(Number(clusterId)).then((zoom) => {
+            if (feature.geometry.type !== "Point" || !map) return;
+            map.easeTo({ center: feature.geometry.coordinates as [number, number], zoom });
+          });
+        });
+
+        function pointPopup(event: MapLayerMouseEvent) {
+          if (!map) return;
+          const feature = event.features?.[0];
+          if (!feature || feature.geometry.type !== "Point") return;
+          const rows = featureRows(feature);
+          const point = callbacksRef.current.pointLookup.get(String(feature.properties?.id ?? ""));
+          if (point) callbacksRef.current.onPointClick?.(point);
+          new maplibregl.Popup({ closeButton: true, maxWidth: "320px" })
+            .setLngLat(feature.geometry.coordinates as [number, number])
+            .setHTML(
+              popupHtml(
+                String(feature.properties?.label ?? "Ponto"),
+                String(
+                  feature.properties?.summary ||
+                    feature.properties?.description ||
+                    feature.properties?.caption ||
+                    "",
+                ),
+                rows,
+                String(feature.properties?.href || ""),
+              ),
+            )
+            .addTo(map);
+        }
+
+        function routePopup(event: MapLayerMouseEvent) {
+          if (!map) return;
+          const feature = event.features?.[0];
+          if (!feature) return;
+          const route = callbacksRef.current.routeLookup.get(String(feature.properties?.id ?? ""));
+          if (route) callbacksRef.current.onRouteClick?.(route);
+          new maplibregl.Popup({ closeButton: true, maxWidth: "320px" })
+            .setLngLat(event.lngLat)
+            .setHTML(
+              popupHtml(
+                String(feature.properties?.label ?? "Rota"),
+                String(feature.properties?.description ?? ""),
+                featureRows(feature),
+                String(feature.properties?.href || ""),
+              ),
+            )
+            .addTo(map);
+        }
+
+        map.on("click", "unclustered-point", pointPopup);
+        map.on("click", "unclustered-point-halo", pointPopup);
+        map.on("click", "point-label", pointPopup);
+        map.on("click", "route-line", routePopup);
+        map.on("click", "route-fill", routePopup);
+        map.on("click", "route-outline", routePopup);
+
+        const pointerLayers = [
+          "clusters",
+          "unclustered-point",
+          "unclustered-point-halo",
+          "point-label",
+          "route-line",
+          "route-fill",
+          "route-outline",
+        ];
+        pointerLayers.forEach((layer) => {
+          map?.on("mouseenter", layer, () => {
+            map?.getCanvas().style.setProperty("cursor", "pointer");
+          });
+          map?.on("mouseleave", layer, () => {
+            map?.getCanvas().style.setProperty("cursor", "");
+          });
+        });
+      })
+      .catch((error) => {
+        console.warn("[NeryMap] MapLibre nao carregou no cliente.", error);
+        setMapStatus("error");
       });
-      map.on("mouseleave", layer, () => {
-        map.getCanvas().style.cursor = "";
-      });
-    });
 
     return () => {
-      resizeObserver.disconnect();
+      disposed = true;
+      resizeObserver?.disconnect();
       loadedRef.current = false;
-      map.remove();
+      map?.remove();
       mapRef.current = null;
     };
   }, [attribution, interactive, variant]);
@@ -683,6 +775,14 @@ export function InteractiveMap({
       )}
     >
       <div ref={containerRef} className="absolute inset-0" />
+
+      {mapStatus !== "ready" && (
+        <div className="pointer-events-none absolute left-3 top-3 z-20 rounded-lg border border-white/15 bg-slate-950/78 px-3 py-2 text-[11px] text-white/80 shadow-xl backdrop-blur">
+          {mapStatus === "loading" && "Carregando mapa..."}
+          {mapStatus === "fallback" && "Carregando mapa alternativo..."}
+          {mapStatus === "error" && "Tiles indisponiveis no momento"}
+        </div>
+      )}
 
       {(title || subtitle || stats.length > 0) && (
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 bg-gradient-to-b from-slate-950/90 via-slate-950/45 to-transparent p-3">
@@ -767,7 +867,19 @@ function syncData(
   const coords = allCoordinates(pointData, routeData);
   if (!coords.length) return;
 
-  const bounds = coords.reduce((acc, coord) => acc.extend(coord), new maplibregl.LngLatBounds(coords[0], coords[0]));
-  const nextBounds = bounds as unknown as LngLatBoundsLike;
+  const [[firstLng, firstLat]] = coords;
+  const [west, south, east, north] = coords.reduce(
+    ([minLng, minLat, maxLng, maxLat], [lng, lat]) => [
+      Math.min(minLng, lng),
+      Math.min(minLat, lat),
+      Math.max(maxLng, lng),
+      Math.max(maxLat, lat),
+    ],
+    [firstLng, firstLat, firstLng, firstLat],
+  );
+  const nextBounds = [
+    [west, south],
+    [east, north],
+  ] as LngLatBoundsLike;
   map.fitBounds(nextBounds, { padding: 72, maxZoom: coords.length === 1 ? 12 : 9.5, duration: 700 });
 }
